@@ -26,7 +26,7 @@ contract AuctionExchange is ReentrancyGuard{
 
     // quan ly danh sach cac phien dau gia
     mapping (uint256 => Auction) public auctions;
-    // quan ly luong tien adf can rut cua moi nguoi (pull pattern)
+    // quan ly luong tien adf pending at bid cua moi nguoi (pull pattern)
     mapping (address => uint256) public pendingReturns;
 
     // su kien
@@ -41,13 +41,14 @@ contract AuctionExchange is ReentrancyGuard{
         adfNFT = IERC721(_adfNFT);
     } 
 
-    // khoi tao phien dau gia
+    // [START] khoi tao phien dau gia
     function createAuction(
         uint256 _nftTokenId, 
         uint256 _duration, 
         uint256 _reservePrice,
         uint256 _minBidIncrement
         ) external nonReentrant {
+            require(_nftTokenId > 0 && adfNFT.ownerOf(_nftTokenId) == msg.sender, "Not the NFT owner");
             require(_duration > 0, "Auction duration must be greater than 0");
             
             // chuyen NFT tu nguoi ban vao hop dong nay luu giu trong qua trinh dau gia
@@ -68,6 +69,7 @@ contract AuctionExchange is ReentrancyGuard{
                 true
             );
 
+            // emit su kien
             emit AuctionCreated(
                 currentAuctionId, 
                 msg.sender, 
@@ -76,5 +78,62 @@ contract AuctionExchange is ReentrancyGuard{
                 _reservePrice, 
                 _minBidIncrement
             );
+    }
+
+    // [BID]thao tac dau gia
+    function bid(uint256 _auctionId, uint256 _bidAmount) external nonReentrant {
+
+
+        // truy cap phien dau gia qua con tro storage
+        Auction storage auction = auctions[_auctionId];
+
+        // -----[CHECK]-----
+        require(auction.active == true, "Auction is not active");
+        require(block.timestamp < auction.endTime, "Auction has ended");
+        require(_bidAmount >= auction.reservePrice, "Bid is too low");
+        if(auction.currentTopBid > 0) require(_bidAmount >= auction.currentTopBid + auction.minBidIncrement, "Bid must be more than the previous top bid");
+
+        // -----[EFFECTS]-----
+        // cat giu tien cua nguoi thua cuoc
+        if(auction.currentTopBidder != address(0)) {
+            pendingReturns[auction.currentTopBidder] += auction.currentTopBid;
         }
+        // ghi nhan nguoiw tra gia cao nhat moi
+        auction.currentTopBidder = msg.sender;
+        auction.currentTopBid = _bidAmount;
+
+        // -----[INTERACTIONS]-----
+        require(adfToken.transferFrom(msg.sender, address(this), _bidAmount), "Transfer ADF failed");
+        emit BidPlaced(_auctionId, msg.sender, _bidAmount);
+        
+    }
+
+    // [END] ket thuc phien dau gia
+    function endAuction(uint256 _auctionId) external nonReentrant {
+        //truy cap phien dau gia qua con tro storage
+        Auction storage auction = auctions[_auctionId];
+
+        // -----[CHECK]-----
+        require(auction.active == true, "Auction is not active");
+        require(block.timestamp >= auction.endTime, "Auction has not ended yet");
+
+        // -----[EFFECTS]-----
+        // đánh dấu phiên đấu giá là đã kết thúc
+        auction.active = false;
+        // 1. Cong tien cho nguoi ban
+        if(auction.currentTopBidder != address(0)) {
+            pendingReturns[auction.seller] += auction.currentTopBid;
+        }
+        // 2. Gui NFT
+        address winner = auction.currentTopBidder;
+        // 2.1 Neu co nguoi thang --> chuyen NFT cho nguoi thang
+        if(winner != address(0)) {
+            adfNFT.transferFrom(address(this), winner, auction.nftTokenId);
+            emit AuctionEnded(_auctionId, winner, auction.currentTopBid);
+        }else { //2.2. Neu khong co nguoi thang --> chuyen NFT cho nguoi ban
+            adfNFT.transferFrom(address(this), auction.seller, auction.nftTokenId);
+            emit AuctionEnded(_auctionId, address(0), 0);
+        }
+        
+    }
 }
