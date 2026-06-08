@@ -83,7 +83,6 @@ contract AuctionExchange is ReentrancyGuard{
     // [BID] thao tac dau gia
     function bid(uint256 _auctionId, uint256 _bidAmount) external nonReentrant {
 
-
         // truy cap phien dau gia qua con tro storage
         Auction storage auction = auctions[_auctionId];
 

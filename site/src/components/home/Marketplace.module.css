@@ -1,70 +1,72 @@
 .marketplaceSection {
-    margin-bottom: 80px;
+  padding: 60px 0;
 }
 
 .sectionHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-    flex-wrap: wrap;
-    gap: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .sectionTitle {
-    font-size: 1.6rem;
-    font-weight: 200;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.sectionTitle::before {
-    content: '';
-    display: inline-block;
-    width: 4px;
-    height: 22px;
-    background-color: var(--color-primary);
-    border-radius: var(--radius-full);
+  font-size: 1.4rem;
+  letter-spacing: 0.06em;
 }
 
 .filterTabs {
-    display: flex;
-    background-color: rgba(255, 255, 255, 0.01);
-    border: 1px solid var(--border-glass);
-    padding: 4px;
-    border-radius: var(--radius-full);
-    gap: 4px;
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .filterTab {
-    background-color: transparent;
-    color: var(--text-secondary);
-    border: none;
-    padding: 8px 18px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    cursor: pointer;
-    border-radius: var(--radius-full);
-    transition: all var(--transition-fast);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 8px 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
 }
 
 .filterTab:hover {
-    color: var(--text-primary);
+  color: var(--text-primary);
 }
 
 .filterTab.active {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--color-primary);
-    border: 1px solid rgba(242, 202, 80, 0.2);
+  background: var(--color-primary);
+  color: var(--bg-primary);
 }
 
 .nftGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-    gap: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--bento-gap);
+}
+
+.statusMessage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

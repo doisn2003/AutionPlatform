@@ -1,5 +1,6 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import auctionRoutes from './routes/auctionRoutes';
 
 const app: Application = express();
 
@@ -9,6 +10,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use('/api/auctions', auctionRoutes);
 // app.use('/api/users', userRoutes);
 
 // Healthcheck Route

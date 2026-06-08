@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import styles from './Header.module.css';
 import { formatAddress } from '../../utils/formatters';
 
 const Header: React.FC = () => {
   const location = useLocation();
-  const [isConnected, setIsConnected] = useState(false);
-  const mockAddress = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F";
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
 
   const handleConnect = () => {
-    setIsConnected(!isConnected);
+    if (isConnected) {
+      disconnect();
+    } else {
+      // Kết nối với connector đầu tiên (injected / MetaMask)
+      const injectedConnector = connectors[0];
+      if (injectedConnector) {
+        connect({ connector: injectedConnector });
+      }
+    }
   };
 
   const navLinks = [
@@ -47,10 +57,10 @@ const Header: React.FC = () => {
             className={`btn btn-primary ${isConnected ? 'connected' : ''}`}
             onClick={handleConnect}
           >
-            {isConnected ? (
+            {isConnected && address ? (
               <>
                 <span className="material-symbols-outlined text-gold">check_circle</span>
-                <span className="btn-text">{formatAddress(mockAddress)}</span>
+                <span className="btn-text">{formatAddress(address)}</span>
               </>
             ) : (
               <>
