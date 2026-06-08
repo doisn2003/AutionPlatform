@@ -1,0 +1,107 @@
+.nftCard {
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.cardStatus {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 2;
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: 1px solid transparent;
+}
+
+.statusActive {
+    background-color: rgba(16, 185, 129, 0.08);
+    border-color: var(--status-active);
+    color: var(--status-active);
+}
+
+.statusUpcoming {
+    background-color: rgba(245, 158, 11, 0.08);
+    border-color: var(--status-upcoming);
+    color: var(--status-upcoming);
+}
+
+.statusEnded {
+    background-color: rgba(148, 163, 184, 0.08);
+    border-color: var(--text-secondary);
+    color: var(--text-secondary);
+}
+
+.cardImgContainer {
+    height: 240px;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border-glass);
+    position: relative;
+}
+
+.cardImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-normal);
+}
+
+.nftCard:hover .cardImg {
+    transform: scale(1.03);
+}
+
+.cardContent {
+    padding: 20px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.cardTitle {
+    font-size: 1.15rem;
+    font-weight: 300;
+    line-height: 1.3;
+}
+
+.cardCreator {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.cardBidRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    padding-top: 12px;
+    margin-bottom: 6px;
+}
+
+.cardLabel {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+}
+
+.cardValue {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.endedOpacity {
+    opacity: 0.75;
+}
+
+.endedImg {
+    filter: grayscale(1);
+}

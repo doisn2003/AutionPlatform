@@ -1,0 +1,117 @@
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background-color: rgba(10, 10, 11, 0.6);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 18px 0;
+}
+
+.headerContainer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.3rem;
+    font-family: 'Anybody', sans-serif;
+    font-weight: 200;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.logoText span {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.nav {
+    display: flex;
+    align-items: center;
+    gap: 36px;
+}
+
+.navLink {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 6px 0;
+    position: relative;
+    transition: color var(--transition-fast);
+}
+
+.navLink:hover, .navLink.active {
+    color: var(--text-primary);
+}
+
+.navLink.active::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--color-primary), transparent);
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.avatarSpace {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-full);
+    position: relative;
+    border: 1px solid var(--border-glass);
+    padding: 2px;
+    background-color: rgba(255, 255, 255, 0.02);
+    display: none;
+}
+
+.avatarSpace.visible {
+    display: block;
+}
+
+.avatarImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-full);
+}
+
+.statusIndicator {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: var(--radius-full);
+    background-color: var(--status-active);
+    border: 2px solid var(--bg-primary);
+}
+
+@media (max-width: 768px) {
+    .headerContainer {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .nav {
+        gap: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
