@@ -80,7 +80,7 @@ contract AuctionExchange is ReentrancyGuard{
             );
     }
 
-    // [BID]thao tac dau gia
+    // [BID] thao tac dau gia
     function bid(uint256 _auctionId, uint256 _bidAmount) external nonReentrant {
 
 
@@ -134,6 +134,35 @@ contract AuctionExchange is ReentrancyGuard{
             adfNFT.transferFrom(address(this), auction.seller, auction.nftTokenId);
             emit AuctionEnded(_auctionId, address(0), 0);
         }
+   
+    }
+
+    // [CANCEL] nguoi ban huy dau gia neu khong co ai tham gia dau gia
+    function cancelAuction(uint256 _auctionId) external nonReentrant {
+        Auction storage auction = auctions[_auctionId];
+
+        // -----[CHECK]-----
+        require(msg.sender == auction.seller, "Only seller can cancel");
+        require(auction.active == true, "Auction is not active");
+        require(auction.currentTopBidder == address(0), "Auction has bids");
+        require(auction.endTime > block.timestamp, "Auction has ended");
+
+        // -----[EFFECTS]-----
+        auction.active = false;
         
+        // Gui NFT ve cho nguoi ban
+        adfNFT.transferFrom(address(this), auction.seller, auction.nftTokenId);
+
+        // Emit su kien
+        emit AuctionCanceled(_auctionId);
+    }
+
+    // ham rut tien
+    function withdraw() external nonReentrant {
+        uint256 amount = pendingReturns[msg.sender];
+        require(amount > 0, "No pending returns");
+        pendingReturns[msg.sender] = 0;
+        require(adfToken.transfer(msg.sender, amount), "Transfer ADF failed");
+        emit Withdraw(msg.sender, amount);
     }
 }
