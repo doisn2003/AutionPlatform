@@ -7,8 +7,8 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ADF_NFT is ERC721, ERC721URIStorage, Ownable {
 
-    // tao id duy nhat cua moi NFT
-    uint256 private _nextTokenId;
+    // tao id duy nhat cua moi NFT (bat dau tu 1)
+    uint256 private _nextTokenId = 1;
 
     // su kien mint NFT moi
     event NFTMinted(address indexed owner, uint256 indexed tokenId);
