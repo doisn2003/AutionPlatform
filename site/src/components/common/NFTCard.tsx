@@ -48,7 +48,16 @@ const NFTCard: React.FC<NFTCardProps> = ({ auction, onBid }) => {
   const currentBid = parseFloat(formatUnits(BigInt(auction.current_top_bid || '0'), 18));
   const reservePrice = parseFloat(formatUnits(BigInt(auction.reserve_price), 18));
   const hasBids = currentBid > 0;
-  const image = PLACEHOLDER_IMAGES[auction.nft_token_id] || DEFAULT_IMAGE;
+  
+  const resolveIPFS = (url?: string) => {
+    if (!url) return DEFAULT_IMAGE;
+    if (url.startsWith('ipfs://')) {
+      return url.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
+    }
+    return url;
+  };
+
+  const image = auction.image ? resolveIPFS(auction.image) : (PLACEHOLDER_IMAGES[auction.nft_token_id] || DEFAULT_IMAGE);
   const sellerShort = `${auction.seller.slice(0, 6)}...${auction.seller.slice(-4)}`;
 
   // Status logic
@@ -74,11 +83,11 @@ const NFTCard: React.FC<NFTCardProps> = ({ auction, onBid }) => {
     <div className={`glass-panel ${styles.nftCard} ${glowClass} ${isEnded ? styles.endedOpacity : ''}`}>
       <div className={`${styles.cardStatus} ${statusClass}`}>{statusText}</div>
       <div className={`${styles.cardImgContainer} ${isEnded ? styles.endedImg : ''}`}>
-        <img src={image} alt={`NFT #${auction.nft_token_id}`} className={styles.cardImg} />
+        <img src={image} alt={auction.name || `NFT #${auction.nft_token_id}`} className={styles.cardImg} />
       </div>
       <div className={styles.cardContent}>
         <h3 className={styles.cardTitle} style={{ color: isEnded ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
-          Vật phẩm #{auction.nft_token_id}
+          {auction.name || `Vật phẩm #${auction.nft_token_id}`}
         </h3>
         <div className={styles.cardCreator}>
           Phiên #{auction.auction_id} • Người bán: {sellerShort}

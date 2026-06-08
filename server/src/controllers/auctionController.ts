@@ -13,16 +13,20 @@ export async function getAuctions(req: Request, res: Response): Promise<void> {
   try {
     const status = req.query.status as string || 'all';
 
-    let query = 'SELECT * FROM auctions';
+    let query = `
+      SELECT a.*, n.name, n.image, n.description 
+      FROM auctions a
+      LEFT JOIN nfts n ON a.nft_token_id = n.token_id
+    `;
     const params: any[] = [];
 
     if (status === 'active') {
-      query += ' WHERE active = true';
+      query += ' WHERE a.active = true';
     } else if (status === 'ended') {
-      query += ' WHERE active = false';
+      query += ' WHERE a.active = false';
     }
 
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY a.created_at DESC';
 
     const result = await pool.query(query, params);
 
@@ -51,7 +55,10 @@ export async function getAuctionById(req: Request, res: Response): Promise<void>
     }
 
     const result = await pool.query(
-      'SELECT * FROM auctions WHERE auction_id = $1',
+      `SELECT a.*, n.name, n.image, n.description 
+       FROM auctions a 
+       LEFT JOIN nfts n ON a.nft_token_id = n.token_id
+       WHERE a.auction_id = $1`,
       [auctionId]
     );
 

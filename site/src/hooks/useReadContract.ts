@@ -6,7 +6,7 @@
 
 import { useReadContract } from 'wagmi';
 import { type Address } from 'viem';
-import { ADF_ABI, AUCTION_EXCHANGE_ABI, CONTRACT_ADDRESSES } from '../config/contracts';
+import { ADF_ABI, ADF_NFT_ABI, AUCTION_EXCHANGE_ABI, CONTRACT_ADDRESSES } from '../config/contracts';
 
 /** Đọc ADF.balanceOf(address) — Số dư ADF của một địa chỉ */
 export function useADFBalance(address?: Address) {
@@ -59,6 +59,20 @@ export function useAuctionOnChain(auctionId?: bigint) {
     args: auctionId !== undefined ? [auctionId] : undefined,
     query: {
       enabled: auctionId !== undefined,
+      refetchInterval: 5_000,
+    },
+  });
+}
+
+/** Đọc ADF_NFT.getApproved(tokenId) — Xem NFT đã được duyệt cho sàn chưa */
+export function useNFTApproved(tokenId?: bigint) {
+  return useReadContract({
+    address: CONTRACT_ADDRESSES.ADF_NFT,
+    abi: ADF_NFT_ABI,
+    functionName: 'getApproved',
+    args: tokenId !== undefined ? [tokenId] : undefined,
+    query: {
+      enabled: tokenId !== undefined,
       refetchInterval: 5_000,
     },
   });

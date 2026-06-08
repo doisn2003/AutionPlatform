@@ -1,6 +1,8 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import auctionRoutes from './routes/auctionRoutes';
+import ipfsRoutes from './routes/ipfsRoutes';
+import nftRoutes from './routes/nftRoutes';
 
 const app: Application = express();
 
@@ -11,7 +13,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auctions', auctionRoutes);
-// app.use('/api/users', userRoutes);
+app.use('/api/ipfs', ipfsRoutes);
+app.use('/api/nfts', nftRoutes);
 
 // Healthcheck Route
 app.get('/api/health', (req: Request, res: Response) => {

@@ -106,3 +106,21 @@ export const AUCTION_EXCHANGE_ABI = [
     stateMutability: 'view',
   },
 ] as const;
+
+export const ADF_NFT_ABI = [
+  {
+    type: 'event',
+    name: 'NFTMinted',
+    inputs: [
+      { name: 'owner', type: 'address', indexed: true },
+      { name: 'tokenId', type: 'uint256', indexed: true },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'tokenURI',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'string' }],
+    stateMutability: 'view',
+  }
+] as const;

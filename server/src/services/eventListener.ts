@@ -6,7 +6,7 @@
  */
 
 import { type Log } from 'viem';
-import { publicClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI } from '../config/blockchain';
+import { publicClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI, ADF_NFT_ABI } from '../config/blockchain';
 import pool from '../config/db';
 
 // ---- Catchup: Đọc event cũ từ block đã lưu ----
@@ -36,6 +36,19 @@ async function catchupEvents(): Promise<void> {
 
   for (const event of createdEvents) {
     await handleAuctionCreated(event as any);
+  }
+
+  // NFTMinted events
+  const mintEvents = await publicClient.getContractEvents({
+    address: CONTRACT_ADDRESSES.ADF_NFT,
+    abi: ADF_NFT_ABI,
+    eventName: 'NFTMinted',
+    fromBlock: fromBlock + 1n,
+    toBlock: currentBlock,
+  });
+
+  for (const event of mintEvents) {
+    await handleNFTMinted(event as any);
   }
 
   // BidPlaced events
@@ -109,6 +122,13 @@ async function handleAuctionCreated(event: any): Promise<void> {
         Number(blockNumber),
       ]
     );
+
+    // Update NFT owner in DB to the exchange contract address (since contract holds the NFT during auction)
+    await pool.query(
+      `UPDATE nfts SET owner = $1 WHERE token_id = $2`,
+      [CONTRACT_ADDRESSES.AuctionExchange.toLowerCase(), Number(nftTokenId)]
+    );
+
     console.log(`   📝 AuctionCreated #${auctionId} by ${seller}`);
   } catch (err) {
     console.error(`   ❌ Error saving AuctionCreated #${auctionId}:`, err);
@@ -140,6 +160,25 @@ async function handleBidPlaced(event: any): Promise<void> {
       [bidder.toLowerCase(), amount.toString(), Number(auctionId)]
     );
 
+    // Calculate hot_score: (bid_count * 10) + (total_volume in ADF)
+    const statsResult = await pool.query(
+      `SELECT COUNT(*)::integer as bid_count, COALESCE(SUM(amount::numeric), 0) as total_volume FROM bids WHERE auction_id = $1`,
+      [Number(auctionId)]
+    );
+    
+    if (statsResult.rows.length > 0) {
+      const bidCount = statsResult.rows[0].bid_count;
+      const totalVolumeWei = statsResult.rows[0].total_volume;
+      const totalVolumeADF = Number(totalVolumeWei) / 1e18;
+      const hotScore = (bidCount * 10) + totalVolumeADF;
+
+      await pool.query(
+        `UPDATE auctions SET hot_score = $1 WHERE auction_id = $2`,
+        [hotScore, Number(auctionId)]
+      );
+      console.log(`   🔥 Updated hot_score for Auction #${auctionId} to ${hotScore} (Bids: ${bidCount}, Vol: ${totalVolumeADF.toFixed(2)} ADF)`);
+    }
+
     console.log(`   💰 BidPlaced #${auctionId} by ${bidder} — ${amount.toString()} wei`);
   } catch (err) {
     console.error(`   ❌ Error saving BidPlaced #${auctionId}:`, err);
@@ -154,6 +193,16 @@ async function handleAuctionEnded(event: any): Promise<void> {
       `UPDATE auctions SET active = false, current_top_bidder = $1, current_top_bid = $2 WHERE auction_id = $3`,
       [winner.toLowerCase(), amount.toString(), Number(auctionId)]
     );
+
+    // Get nft_token_id from the auction
+    const res = await pool.query(`SELECT nft_token_id, seller FROM auctions WHERE auction_id = $1`, [Number(auctionId)]);
+    if (res.rows.length > 0) {
+        const nftTokenId = res.rows[0].nft_token_id;
+        // If there is a winner (address != 0), update NFT owner. Otherwise, it returns to seller.
+        const newOwner = winner !== '0x0000000000000000000000000000000000000000' ? winner : res.rows[0].seller;
+        await pool.query(`UPDATE nfts SET owner = $1 WHERE token_id = $2`, [newOwner.toLowerCase(), nftTokenId]);
+    }
+
     console.log(`   🏁 AuctionEnded #${auctionId} — winner: ${winner}`);
   } catch (err) {
     console.error(`   ❌ Error saving AuctionEnded #${auctionId}:`, err);
@@ -168,9 +217,62 @@ async function handleAuctionCanceled(event: any): Promise<void> {
       `UPDATE auctions SET active = false WHERE auction_id = $1`,
       [Number(auctionId)]
     );
+
+    // Get nft_token_id and seller from the auction to revert the NFT owner
+    const res = await pool.query(`SELECT nft_token_id, seller FROM auctions WHERE auction_id = $1`, [Number(auctionId)]);
+    if (res.rows.length > 0) {
+        const nftTokenId = res.rows[0].nft_token_id;
+        const seller = res.rows[0].seller;
+        await pool.query(`UPDATE nfts SET owner = $1 WHERE token_id = $2`, [seller.toLowerCase(), nftTokenId]);
+    }
+
     console.log(`   ❌ AuctionCanceled #${auctionId}`);
   } catch (err) {
     console.error(`   ❌ Error saving AuctionCanceled #${auctionId}:`, err);
+  }
+}
+
+async function handleNFTMinted(event: any): Promise<void> {
+  const { owner, tokenId } = event.args;
+  const txHash = event.transactionHash;
+  const blockNumber = event.blockNumber;
+
+  try {
+    const tokenURI = await publicClient.readContract({
+      address: CONTRACT_ADDRESSES.ADF_NFT,
+      abi: ADF_NFT_ABI,
+      functionName: 'tokenURI',
+      args: [tokenId]
+    });
+
+    let metadataJSON: any = {};
+    try {
+        if (typeof tokenURI === 'string' && tokenURI.startsWith('ipfs://')) {
+            const cid = tokenURI.replace('ipfs://', '');
+            const res = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
+            if(res.ok) metadataJSON = await res.json();
+        }
+    } catch(e) { console.error('Error fetching metadata', e) }
+
+    await pool.query(
+      `INSERT INTO nfts (token_id, owner, token_uri, name, description, image, attributes, tx_hash, block_number)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (token_id) DO UPDATE SET owner = $2`,
+      [
+        Number(tokenId),
+        owner.toLowerCase(),
+        tokenURI,
+        metadataJSON.name || '',
+        metadataJSON.description || '',
+        metadataJSON.image || '',
+        metadataJSON.attributes ? JSON.stringify(metadataJSON.attributes) : null,
+        txHash,
+        Number(blockNumber),
+      ]
+    );
+    console.log(`   🖼️ NFTMinted #${tokenId} by ${owner}`);
+  } catch (err) {
+    console.error(`   ❌ Error saving NFTMinted #${tokenId}:`, err);
   }
 }
 
@@ -185,6 +287,18 @@ function watchEvents(): void {
     onLogs: (logs) => {
       for (const log of logs) {
         handleAuctionCreated(log);
+        updateSyncBlock(log.blockNumber);
+      }
+    },
+  });
+
+  publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESSES.ADF_NFT,
+    abi: ADF_NFT_ABI,
+    eventName: 'NFTMinted',
+    onLogs: (logs) => {
+      for (const log of logs) {
+        handleNFTMinted(log);
         updateSyncBlock(log.blockNumber);
       }
     },

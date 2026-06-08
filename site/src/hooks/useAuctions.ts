@@ -19,6 +19,10 @@ export interface AuctionFromAPI {
   tx_hash: string | null;
   block_number: number | null;
   created_at: string;
+  hot_score?: number | string;
+  name?: string;
+  image?: string;
+  description?: string;
 }
 
 interface AuctionAPIResponse {

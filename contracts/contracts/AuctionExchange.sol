@@ -87,6 +87,7 @@ contract AuctionExchange is ReentrancyGuard{
         Auction storage auction = auctions[_auctionId];
 
         // -----[CHECK]-----
+        require(msg.sender != auction.seller, "Seller cannot bid");
         require(auction.active == true, "Auction is not active");
         require(block.timestamp < auction.endTime, "Auction has ended");
         require(_bidAmount >= auction.reservePrice, "Bid is too low");

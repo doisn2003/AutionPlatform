@@ -1,7 +1,7 @@
 /**
  * Marketplace — Danh sách phiên đấu giá
  * 
- * Hiển thị dữ liệu thật từ server API, với fallback mock data.
+ * Hiển thị dữ liệu thật từ server API
  * Bao gồm BidModal khi click "Đấu Giá".
  */
 
@@ -72,9 +72,17 @@ const Marketplace: React.FC = () => {
 
       {/* Empty State */}
       {!isLoading && !error && auctions && auctions.length === 0 && (
-        <div className={styles.statusMessage}>
-          <span className="material-symbols-outlined text-muted">inventory_2</span>
-          <span>Chưa có phiên đấu giá nào. Hãy tạo phiên đầu tiên!</span>
+        <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center', marginTop: '20px', border: '1px dashed var(--border-glass)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+          <span className="material-symbols-outlined pulse-live" style={{ fontSize: '3.5rem', color: 'var(--color-primary)', display: 'inline-block' }}>inventory_2</span>
+          <div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 300, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }} className="text-gradient">Chưa có phiên đấu giá nào</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 300, maxWidth: '450px', margin: '0 auto', lineHeight: 1.5 }}>
+              Hiện tại không có phiên đấu giá nào phù hợp với bộ lọc này. Hãy kết nối ví, đúc NFT mới và khởi tạo phiên đấu giá đầu tiên tại trang **Đúc vật phẩm**!
+            </p>
+          </div>
+          <div style={{ marginTop: '8px' }}>
+            <a href="/mint" className="btn btn-gradient btn-sm">Đúc NFT Ngay</a>
+          </div>
         </div>
       )}
 

@@ -95,6 +95,13 @@ export const ADF_NFT_ABI = [
     stateMutability: 'view',
   },
   {
+    type: 'function',
+    name: 'getApproved',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
     type: 'event',
     name: 'NFTMinted',
     inputs: [

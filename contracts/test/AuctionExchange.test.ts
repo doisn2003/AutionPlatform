@@ -90,6 +90,15 @@ describe("AuctionExchange", async function () {
             return { ...fixture, reservePrice, minBidIncrement };
         }
 
+        it("Báo lỗi nếu chủ phiên tự trả giá", async function () {
+            const { auction, seller, reservePrice } = await networkHelpers.loadFixture(deployAndCreateAuction);
+            
+            await viem.assertions.revertWith(
+                auction.write.bid([1n, reservePrice], { account: seller.account }),
+                "Seller cannot bid"
+            );
+        });
+
         it("Báo lỗi nếu trả giá thấp hơn giá khởi điểm", async function () {
             const { auction, buyer1, reservePrice } = await networkHelpers.loadFixture(deployAndCreateAuction);
             
