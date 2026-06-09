@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Mint from './pages/Mint';
+import Exchange from './pages/Exchange';
 import './styles/global.css';
 
 function App() {
@@ -10,7 +11,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/mint" element={<Mint />} />
-        {/* <Route path="/exchange" element={<Exchange />} /> */}
+        <Route path="/exchange" element={<Exchange />} />
       </Routes>
     </Router>
   );
