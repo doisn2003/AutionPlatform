@@ -240,3 +240,25 @@
         gap: 12px;
     }
 }
+
+.placeholderImage {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.06) 100%);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.placeholderImage span:first-child {
+    font-size: 2.5rem;
+    color: var(--color-secondary-container);
+    opacity: 0.8;
+}
+

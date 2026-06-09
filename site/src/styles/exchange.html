@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBSIDIAN | Giao Dịch & Hoán Đổi</title>
+    <!-- Fonts and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Anybody:wght@100;200;300;400;600;800&family=Hanken+Grotesk:wght@300;400;600;800&family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Background Framework Grid & Glows -->
+    <div class="grid-overlay"></div>
+    <div class="glow-spot-gold"></div>
+    <div class="glow-spot-blue"></div>
+
+    <!-- Header Navigation -->
+    <header class="header">
+        <div class="container header-container">
+            <!-- Brand Logo -->
+            <a href="index.html" class="logo">
+                <span class="material-symbols-outlined text-gold">diamond</span>
+                <span class="logo-text">Obsidian<span>.</span></span>
+            </a>
+
+            <!-- Nav Links -->
+            <nav class="nav">
+                <a href="index.html" class="nav-link">Trang chủ</a>
+                <a href="mint.html" class="nav-link">Đúc vật phẩm</a>
+                <a href="exchange.html" class="nav-link active">Giao dịch</a>
+                <a href="guide.html" class="nav-link">Hướng dẫn</a>
+            </nav>
+
+            <!-- Actions (Connect Wallet / User Profile) -->
+            <div class="actions">
+                <button class="btn btn-primary" id="connectWalletBtn">
+                    <span class="material-symbols-outlined">account_balance_wallet</span>
+                    <span class="btn-text">Kết nối ví</span>
+                </button>
+                <div class="avatar-space" title="Hồ sơ cá nhân">
+                    <img src="https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=100&auto=format&fit=crop&q=60" alt="Avatar" class="avatar-img">
+                    <span class="status-indicator"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Section -->
+    <main class="container">
+        
+        <!-- Exchange Layout -->
+        <section class="swap-layout">
+            
+            <!-- Left Column: Swap Token & Transaction History -->
+            <div style="display: flex; flex-direction: column; gap: var(--bento-gap);">
+                
+                <!-- Swap Box Calculator -->
+                <div class="swap-panel glass-panel gold-border glow-gold">
+                    <div style="margin-bottom: 24px; text-align: center;">
+                        <h2 style="font-size: 1.4rem; font-weight: 200;" class="text-gradient">Hoán Đổi Token</h2>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">Tính toán và chuyển đổi giữa ETH và ADF Token tiện lợi.</p>
+                    </div>
+
+                    <!-- Swap Tabs Mode -->
+                    <div style="display: flex; gap: 8px; margin-bottom: 20px; background-color: rgba(255,255,255,0.01); padding: 4px; border-radius: var(--radius-full); border: 1px solid var(--border-glass);">
+                        <button class="filter-tab active" id="tabBuy" onclick="switchSwapMode('buy')" style="flex: 1; text-align: center; font-size: 0.7rem; padding: 6px 0;">Mua ADF</button>
+                        <button class="filter-tab" id="tabWithdraw" onclick="switchSwapMode('withdraw')" style="flex: 1; text-align: center; font-size: 0.7rem; padding: 6px 0;">Rút ETH</button>
+                    </div>
+
+                    <!-- Wallet balances -->
+                    <div class="flex-between" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 16px;">
+                        <span>Số dư ETH: <strong class="font-mono text-gold" id="ethBalance">10.50</strong></span>
+                        <span>Số dư ADF: <strong class="font-mono text-blue" id="adfBalance">5000.00</strong></span>
+                    </div>
+
+                    <!-- Form swap -->
+                    <form id="swapForm" onsubmit="event.preventDefault(); handleSwapSubmit();">
+                        
+                        <!-- From Block -->
+                        <div class="swap-input-block">
+                            <div class="swap-input-header">
+                                <span id="fromLabel">Từ (Bán)</span>
+                                <span class="text-gold" style="cursor: pointer; text-decoration: underline;" onclick="fillMaxSwap()">Tối đa</span>
+                            </div>
+                            <div class="swap-input-row">
+                                <input type="number" id="swapInputAmount" class="swap-input-field" placeholder="0.0" step="0.0001" min="0.0001" oninput="calculateSwapOutput()" required>
+                                <span class="swap-select font-mono" id="fromTokenBadge">ETH</span>
+                            </div>
+                        </div>
+
+                        <!-- Divider button -->
+                        <button class="swap-divider-btn" type="button" onclick="reverseMode()">
+                            <span class="material-symbols-outlined">swap_vert</span>
+                        </button>
+
+                        <!-- To Block -->
+                        <div class="swap-input-block">
+                            <div class="swap-input-header">
+                                <span id="toLabel">Đến (Nhận)</span>
+                            </div>
+                            <div class="swap-input-row">
+                                <input type="number" id="swapOutputAmount" class="swap-input-field" placeholder="0.0" readonly>
+                                <span class="swap-select font-mono" id="toTokenBadge">ADF</span>
+                            </div>
+                        </div>
+
+                        <!-- Exchange Rate details -->
+                        <div style="margin: 20px 0; display: flex; flex-direction: column; gap: 8px;">
+                            <div class="swap-detail-item">
+                                <span>Tỷ giá quy đổi:</span>
+                                <span class="text-gold" id="exchangeRateText">1 ETH = 1000 ADF</span>
+                            </div>
+                            <div class="swap-detail-item">
+                                <span>Phí gas ước tính:</span>
+                                <span class="text-blue" id="txFeeText">0.002 ETH</span>
+                            </div>
+                        </div>
+
+                        <!-- Submit Swap -->
+                        <button type="submit" class="btn btn-gradient w-full" id="btnSwapAction">Mua ADF Ngay</button>
+
+                    </form>
+                </div>
+
+                <!-- Transaction History -->
+                <div class="history-panel glass-panel">
+                    <div class="flex-between" style="margin-bottom: 20px;">
+                        <h2 style="font-size: 1.25rem; font-weight: 200;" class="text-gradient">Lịch Sử Hoạt Động</h2>
+                        <button class="btn btn-outline btn-sm" onclick="clearHistory()">Xóa lịch sử</button>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Loại giao dịch</th>
+                                    <th>Số lượng</th>
+                                    <th>TxHash / Địa chỉ</th>
+                                    <th>Thời gian</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <tr>
+                                    <td><span style="background: rgba(0, 227, 253, 0.08); color: var(--color-secondary-container); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem;">Mua ADF</span></td>
+                                    <td class="font-mono text-gold">+1,500 ADF</td>
+                                    <td class="tx-hash">0x9a7f...e34d</td>
+                                    <td>10 phút trước</td>
+                                    <td><span style="color: var(--status-active); font-weight: 600;">● Hoàn tất</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span style="background: rgba(168, 85, 247, 0.08); color: #c084fc; padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem;">Chuyển đi</span></td>
+                                    <td class="font-mono text-muted">-0.5 ETH</td>
+                                    <td class="tx-hash">0x8a92...a89c</td>
+                                    <td>2 giờ trước</td>
+                                    <td><span style="color: var(--status-active); font-weight: 600;">● Hoàn tất</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span style="background: rgba(242, 202, 80, 0.08); color: var(--color-primary); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem;">Rút ETH</span></td>
+                                    <td class="font-mono text-muted">-1.2 ETH</td>
+                                    <td class="tx-hash">0x2f8b...c55a</td>
+                                    <td>1 ngày trước</td>
+                                    <td><span style="color: var(--status-active); font-weight: 600;">● Hoàn tất</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: P2P Wallet Transfer -->
+            <div class="glass-panel" style="padding: 32px; height: fit-content;">
+                <div style="margin-bottom: 24px;">
+                    <h2 style="font-size: 1.3rem; font-weight: 200; margin-bottom: 6px;" class="text-gradient">Chuyển Khoản Trực Tiếp</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 300;">Chuyển nhanh tài sản tiền điện tử đến các địa chỉ ví trong hệ thống.</p>
+                </div>
+
+                <form id="transferForm" onsubmit="event.preventDefault(); handleTransferSubmit();" style="display: flex; flex-direction: column; gap: 20px;">
+                    
+                    <!-- Dest Wallet address -->
+                    <div class="form-group">
+                        <label for="destAddress" class="form-label">Địa chỉ ví nhận <span class="text-gold">*</span></label>
+                        <input type="text" id="destAddress" class="form-input" placeholder="0x..." pattern="^0x[a-fA-F0-9]{40}$" title="Nhập địa chỉ ví Ethereum hợp lệ bắt đầu bằng 0x." required>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">Nhập chính xác địa chỉ ví Ethereum dạng Hex (42 ký tự).</span>
+                    </div>
+
+                    <!-- Blockchain Network -->
+                    <div class="form-group">
+                        <label for="networkSelect" class="form-label">Chọn Blockchain <span class="text-gold">*</span></label>
+                        <select id="networkSelect" class="form-select" required>
+                            <option value="ADF Testnet">ADF Testnet (Ưu tiên)</option>
+                            <option value="Ethereum Mainnet">Ethereum Mainnet</option>
+                            <option value="BNB Chain">BNB Smart Chain</option>
+                            <option value="Polygon">Polygon Mainnet</option>
+                        </select>
+                    </div>
+
+                    <!-- Asset Select -->
+                    <div class="form-group">
+                        <label for="assetSelect" class="form-label">Loại tài sản <span class="text-gold">*</span></label>
+                        <select id="assetSelect" class="form-select" onchange="updateTransferMaxLabel()" required>
+                            <option value="ETH">ETH (Ethereum)</option>
+                            <option value="ADF">ADF (Token Đấu Giá)</option>
+                        </select>
+                    </div>
+
+                    <!-- Amount -->
+                    <div class="form-group">
+                        <div class="flex-between" style="margin-bottom: 4px;">
+                            <label for="transferAmount" class="form-label" style="margin-bottom:0;">Số lượng gửi <span class="text-gold">*</span></label>
+                            <span class="text-gold font-mono" style="font-size: 0.75rem; cursor: pointer; text-decoration: underline;" onclick="fillMaxTransfer()">Tối đa (<span id="transferMaxVal">10.50</span>)</span>
+                        </div>
+                        <input type="number" id="transferAmount" class="form-input" placeholder="0.0" step="0.0001" min="0.0001" required>
+                    </div>
+
+                    <!-- Submit transfer -->
+                    <div style="margin-top: 10px;">
+                        <button type="submit" class="btn btn-primary w-full">Gửi Tài Sản</button>
+                    </div>
+
+                </form>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-container">
+            <div class="footer-logo logo">
+                <span class="material-symbols-outlined text-gold">diamond</span>
+                <span class="logo-text">Obsidian<span>.</span></span>
+            </div>
+            <p class="footer-copy">© 2026 Obsidian. Sàn đấu giá phi tập trung dành cho các tác phẩm tự đúc.</p>
+            <div class="footer-links">
+                <a href="#">Điều khoản</a>
+                <a href="#">Bảo mật</a>
+                <a href="#">Liên hệ</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive script -->
+    <script>
+        // Balances State
+        let currentETH = 10.50;
+        let currentADF = 5000.00;
+        const exchangeRate = 1000; // 1 ETH = 1000 ADF
+
+        // Wallet Connection Simulation
+        const connectBtn = document.getElementById('connectWalletBtn');
+        const avatarSpace = document.querySelector('.avatar-space');
+        let isConnected = false;
+
+        connectBtn.addEventListener('click', () => {
+            isConnected = !isConnected;
+            if (isConnected) {
+                connectBtn.innerHTML = '<span class="material-symbols-outlined text-gold">check_circle</span><span class="btn-text">0x71C...39B</span>';
+                connectBtn.classList.add('connected');
+                avatarSpace.classList.add('visible');
+            } else {
+                connectBtn.innerHTML = '<span class="material-symbols-outlined">account_balance_wallet</span><span class="btn-text">Kết nối ví</span>';
+                connectBtn.classList.remove('connected');
+                avatarSpace.classList.remove('visible');
+            }
+        });
+
+        // Swap mode tabs logic
+        let currentSwapMode = 'buy'; // 'buy' or 'withdraw'
+
+        function switchSwapMode(mode) {
+            currentSwapMode = mode;
+            const tabBuy = document.getElementById('tabBuy');
+            const tabWithdraw = document.getElementById('tabWithdraw');
+            const fromLabel = document.getElementById('fromLabel');
+            const toLabel = document.getElementById('toLabel');
+            const fromBadge = document.getElementById('fromTokenBadge');
+            const toBadge = document.getElementById('toTokenBadge');
+            const btnSwap = document.getElementById('btnSwapAction');
+            const rateText = document.getElementById('exchangeRateText');
+            const feeText = document.getElementById('txFeeText');
+
+            document.getElementById('swapInputAmount').value = '';
+            document.getElementById('swapOutputAmount').value = '';
+
+            if (mode === 'buy') {
+                tabBuy.classList.add('active');
+                tabWithdraw.classList.remove('active');
+                
+                fromLabel.textContent = 'Từ (Bán)';
+                toLabel.textContent = 'Đến (Nhận)';
+                fromBadge.textContent = 'ETH';
+                toBadge.textContent = 'ADF';
+                btnSwap.textContent = 'Mua ADF Ngay';
+                rateText.textContent = '1 ETH = 1000 ADF';
+                feeText.textContent = '0.002 ETH';
+            } else {
+                tabBuy.classList.remove('active');
+                tabWithdraw.classList.add('active');
+                
+                fromLabel.textContent = 'Từ (Quy đổi)';
+                toLabel.textContent = 'Đến (Rút)';
+                fromBadge.textContent = 'ADF';
+                toBadge.textContent = 'ETH';
+                btnSwap.textContent = 'Rút ETH Ngay';
+                rateText.textContent = '1000 ADF = 1 ETH';
+                feeText.textContent = '0.005 ETH';
+            }
+        }
+
+        // Live conversion rate calculations
+        function calculateSwapOutput() {
+            const inputVal = parseFloat(document.getElementById('swapInputAmount').value);
+            const outputField = document.getElementById('swapOutputAmount');
+            
+            if (isNaN(inputVal) || inputVal <= 0) {
+                outputField.value = '';
+                return;
+            }
+
+            if (currentSwapMode === 'buy') {
+                outputField.value = (inputVal * exchangeRate).toFixed(2);
+            } else {
+                outputField.value = (inputVal / exchangeRate).toFixed(4);
+            }
+        }
+
+        // Reverse mode triggers
+        function reverseMode() {
+            if (currentSwapMode === 'buy') {
+                switchSwapMode('withdraw');
+            } else {
+                switchSwapMode('buy');
+            }
+        }
+
+        // Maximum inputs fillers
+        function fillMaxSwap() {
+            const inputField = document.getElementById('swapInputAmount');
+            if (currentSwapMode === 'buy') {
+                const maxEth = Math.max(0, currentETH - 0.01);
+                inputField.value = maxEth.toFixed(4);
+            } else {
+                inputField.value = currentADF.toFixed(2);
+            }
+            calculateSwapOutput();
+        }
+
+        function fillMaxTransfer() {
+            const asset = document.getElementById('assetSelect').value;
+            const transferAmount = document.getElementById('transferAmount');
+            if (asset === 'ETH') {
+                transferAmount.value = currentETH.toFixed(4);
+            } else {
+                transferAmount.value = currentADF.toFixed(2);
+            }
+        }
+
+        function updateTransferMaxLabel() {
+            const asset = document.getElementById('assetSelect').value;
+            const maxValSpan = document.getElementById('transferMaxVal');
+            if (asset === 'ETH') {
+                maxValSpan.textContent = currentETH.toFixed(2);
+            } else {
+                maxValSpan.textContent = currentADF.toFixed(2);
+            }
+            document.getElementById('transferAmount').value = '';
+        }
+
+        // Swap submit handler
+        function handleSwapSubmit() {
+            const inputVal = parseFloat(document.getElementById('swapInputAmount').value);
+            const outputVal = parseFloat(document.getElementById('swapOutputAmount').value);
+
+            if (currentSwapMode === 'buy') {
+                const totalCost = inputVal + 0.002;
+                if (currentETH < totalCost) {
+                    alert('❌ Số dư ví ETH của bạn không đủ (bao gồm cả phí gas).');
+                    return;
+                }
+                
+                currentETH -= totalCost;
+                currentADF += outputVal;
+                
+                addHistoryRecord('Mua ADF', `+${outputVal.toLocaleString()} ADF`, '0x5b3c...f12a');
+                alert(`✨ Giao dịch hoàn tất! Bạn đã đổi ${inputVal} ETH lấy ${outputVal} ADF.`);
+            } else {
+                if (currentADF < inputVal) {
+                    alert('❌ Số dư ví ADF của bạn không đủ.');
+                    return;
+                }
+                if (currentETH < 0.005) {
+                    alert('❌ Số dư ví ETH không đủ trả phí gas.');
+                    return;
+                }
+
+                currentADF -= inputVal;
+                currentETH += (outputVal - 0.005);
+                
+                addHistoryRecord('Rút ETH', `-${inputVal.toLocaleString()} ADF`, '0x7e1c...a302');
+                alert(`✨ Rút tiền hoàn tất! Bạn đã rút ${(outputVal - 0.005).toFixed(4)} ETH từ ${inputVal} ADF.`);
+            }
+
+            document.getElementById('ethBalance').textContent = currentETH.toFixed(2);
+            document.getElementById('adfBalance').textContent = currentADF.toFixed(2);
+            updateTransferMaxLabel();
+            document.getElementById('swapForm').reset();
+        }
+
+        // Transfer submit handler
+        function handleTransferSubmit() {
+            const dest = document.getElementById('destAddress').value;
+            const network = document.getElementById('networkSelect').value;
+            const asset = document.getElementById('assetSelect').value;
+            const amount = parseFloat(document.getElementById('transferAmount').value);
+
+            if (asset === 'ETH') {
+                if (currentETH < amount) {
+                    alert('❌ Số dư ETH của bạn không đủ.');
+                    return;
+                }
+                currentETH -= amount;
+            } else {
+                if (currentADF < amount) {
+                    alert('❌ Số dư ADF của bạn không đủ.');
+                    return;
+                }
+                currentADF -= amount;
+            }
+
+            const shortDest = dest.substring(0, 6) + '...' + dest.substring(dest.length - 4);
+            addHistoryRecord(`Chuyển ${asset}`, `-${amount} ${asset}`, shortDest);
+            alert(`✨ Chuyển thành công ${amount} ${asset} tới địa chỉ ${shortDest} trên mạng ${network}.`);
+
+            document.getElementById('ethBalance').textContent = currentETH.toFixed(2);
+            document.getElementById('adfBalance').textContent = currentADF.toFixed(2);
+            updateTransferMaxLabel();
+            document.getElementById('transferForm').reset();
+        }
+
+        // Add history row
+        function addHistoryRecord(type, amount, target) {
+            const body = document.getElementById('historyTableBody');
+            const newRow = document.createElement('tr');
+            
+            let badgeBg = 'rgba(0, 227, 253, 0.08)';
+            let badgeColor = 'var(--color-secondary-container)';
+            
+            if (type.includes('Chuyển')) {
+                badgeBg = 'rgba(168, 85, 247, 0.08)';
+                badgeColor = '#c084fc';
+            } else if (type.includes('Rút')) {
+                badgeBg = 'rgba(242, 202, 80, 0.08)';
+                badgeColor = 'var(--color-primary)';
+            }
+
+            newRow.innerHTML = `
+                <td><span style="background: ${badgeBg}; color: ${badgeColor}; padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.75rem;">${type}</span></td>
+                <td class="font-mono text-gold">${amount}</td>
+                <td class="tx-hash">${target}</td>
+                <td>Vừa xong</td>
+                <td><span style="color: var(--status-active); font-weight: 600;">● Hoàn tất</span></td>
+            `;
+
+            body.insertBefore(newRow, body.firstChild);
+        }
+
+        // Clear history table
+        function clearHistory() {
+            document.getElementById('historyTableBody').innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 36px 0;">Không tìm thấy lịch sử hoạt động.</td>
+                </tr>
+            `;
+        }
+    </script>
+</body>
+</html>

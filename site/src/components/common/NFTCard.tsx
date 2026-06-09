@@ -10,17 +10,7 @@ import styles from './NFTCard.module.css';
 import { type AuctionFromAPI } from '../../hooks/useAuctions';
 import { formatTimeLeftShort } from '../../utils/formatters';
 import { formatUnits } from 'viem';
-
-// Placeholder images mapped by NFT token ID
-const PLACEHOLDER_IMAGES: Record<number, string> = {
-  1: 'https://images.unsplash.com/photo-1644024276223-4411136b672e?w=500&auto=format&fit=crop&q=80',
-  2: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=500&auto=format&fit=crop&q=80',
-  3: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80',
-  4: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=500&auto=format&fit=crop&q=80',
-  5: 'https://images.unsplash.com/photo-1617791160505-6f006e121980?w=500&auto=format&fit=crop&q=80',
-};
-
-const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=500&auto=format&fit=crop&q=80';
+import { useNFTImage } from '../../hooks/useNFTImage';
 
 interface NFTCardProps {
   auction: AuctionFromAPI;
@@ -49,15 +39,7 @@ const NFTCard: React.FC<NFTCardProps> = ({ auction, onBid }) => {
   const reservePrice = parseFloat(formatUnits(BigInt(auction.reserve_price), 18));
   const hasBids = currentBid > 0;
   
-  const resolveIPFS = (url?: string) => {
-    if (!url) return DEFAULT_IMAGE;
-    if (url.startsWith('ipfs://')) {
-      return url.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
-    }
-    return url;
-  };
-
-  const image = auction.image ? resolveIPFS(auction.image) : (PLACEHOLDER_IMAGES[auction.nft_token_id] || DEFAULT_IMAGE);
+  const { imageUrl } = useNFTImage(auction.nft_token_id, auction.image);
   const sellerShort = `${auction.seller.slice(0, 6)}...${auction.seller.slice(-4)}`;
 
   // Status logic
@@ -83,7 +65,14 @@ const NFTCard: React.FC<NFTCardProps> = ({ auction, onBid }) => {
     <div className={`glass-panel ${styles.nftCard} ${glowClass} ${isEnded ? styles.endedOpacity : ''}`}>
       <div className={`${styles.cardStatus} ${statusClass}`}>{statusText}</div>
       <div className={`${styles.cardImgContainer} ${isEnded ? styles.endedImg : ''}`}>
-        <img src={image} alt={auction.name || `NFT #${auction.nft_token_id}`} className={styles.cardImg} />
+        {imageUrl ? (
+          <img src={imageUrl} alt={auction.name || `NFT #${auction.nft_token_id}`} className={styles.cardImg} />
+        ) : (
+          <div className={styles.placeholderImage}>
+            <span className="material-symbols-outlined">image_not_supported</span>
+            <span>Không có ảnh</span>
+          </div>
+        )}
       </div>
       <div className={styles.cardContent}>
         <h3 className={styles.cardTitle} style={{ color: isEnded ? 'var(--text-secondary)' : 'var(--text-primary)' }}>

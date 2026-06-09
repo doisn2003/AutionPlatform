@@ -5,6 +5,7 @@ import { useApproveNFT, useCreateAuction } from '../../hooks/useContractActions'
 import { useNFTApproved } from '../../hooks/useReadContract';
 import { CONTRACT_ADDRESSES } from '../../config/contracts';
 import styles from './CreateAuctionModal.module.css';
+import { useNFTImage } from '../../hooks/useNFTImage';
 
 interface CreateAuctionModalProps {
   nft: {
@@ -19,6 +20,7 @@ interface CreateAuctionModalProps {
 const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, onSuccess }) => {
   const { isConnected } = useAccount();
   const { data: approvedAddress, refetch: refetchApproval } = useNFTApproved(BigInt(nft.token_id));
+  const { imageUrl } = useNFTImage(nft.token_id, nft.image);
 
   const {
     approveNFT,
@@ -135,15 +137,6 @@ const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, o
     setDurationUnit(unit);
   };
 
-  // Convert IPFS URL to HTTP gateway for display
-  const resolveIPFS = (url: string) => {
-    if (!url) return 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=200&auto=format&fit=crop&q=80';
-    if (url.startsWith('ipfs://')) {
-      return url.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
-    }
-    return url;
-  };
-
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={`glass-panel gold-border ${styles.modal}`} onClick={(e) => e.stopPropagation()}>
@@ -157,7 +150,14 @@ const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, o
 
         {/* NFT Details */}
         <div className={styles.nftOverview}>
-          <img src={resolveIPFS(nft.image)} alt={nft.name} className={styles.nftThumb} />
+          {imageUrl ? (
+            <img src={imageUrl} alt={nft.name} className={styles.nftThumb} />
+          ) : (
+            <div className={styles.placeholderThumb}>
+              <span className="material-symbols-outlined">image_not_supported</span>
+              <span>Không có ảnh</span>
+            </div>
+          )}
           <div className={styles.nftMeta}>
             <span className={styles.nftName}>{nft.name || `Vật phẩm #${nft.token_id}`}</span>
             <span className={styles.nftId}>Token ID: {nft.token_id}</span>

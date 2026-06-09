@@ -12,20 +12,14 @@ import styles from './Hero.module.css';
 import { useAuctions, type AuctionFromAPI } from '../../hooks/useAuctions';
 import { formatTimeLeft, formatTimeLeftShort } from '../../utils/formatters';
 import BidModal from './BidModal';
+import { useNFTImage } from '../../hooks/useNFTImage';
 
 const Hero: React.FC = () => {
   const { data: auctions } = useAuctions('active');
   const { isConnected } = useAccount();
   const [selectedAuction, setSelectedAuction] = useState<AuctionFromAPI | null>(null);
 
-  // Convert IPFS URL to HTTP gateway
-  const resolveIPFS = (url?: string) => {
-    if (!url) return '';
-    if (url.startsWith('ipfs://')) {
-      return url.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
-    }
-    return url;
-  };
+
 
   // Pick featured auction: active auction with highest current bid
   const featured = auctions?.reduce<AuctionFromAPI | null>((best, auction) => {
@@ -35,15 +29,13 @@ const Hero: React.FC = () => {
     return thisBid > bestBid ? auction : best;
   }, null) || null;
 
-  // Pick trending: active auction (excluding featured) with highest hot_score
-  const trending = auctions
-    ?.filter((a) => a !== featured)
-    ?.reduce<AuctionFromAPI | null>((best, auction) => {
-      if (!best) return auction;
-      const bestScore = Number(best.hot_score || 0);
-      const thisScore = Number(auction.hot_score || 0);
-      return thisScore > bestScore ? auction : best;
-    }, null) || null;
+  // Pick trending: active auction with highest hot_score
+  const trending = auctions?.reduce<AuctionFromAPI | null>((best, auction) => {
+    if (!best) return auction;
+    const bestScore = Number(best.hot_score || 0);
+    const thisScore = Number(auction.hot_score || 0);
+    return thisScore > bestScore ? auction : best;
+  }, null) || null;
 
   const [featuredTime, setFeaturedTime] = useState('--:--:--');
   const [trendingTime, setTrendingTime] = useState('--h --m');
@@ -72,13 +64,8 @@ const Hero: React.FC = () => {
     ? `${trending.seller.slice(0, 6)}...${trending.seller.slice(-4)}`
     : '--';
 
-  const featuredImage = featured && featured.image
-    ? resolveIPFS(featured.image)
-    : `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80`;
-
-  const trendingImage = trending && trending.image
-    ? resolveIPFS(trending.image)
-    : `https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=500&auto=format&fit=crop&q=80`;
+  const { imageUrl: featuredImage } = useNFTImage(featured?.nft_token_id, featured?.image);
+  const { imageUrl: trendingImage } = useNFTImage(trending?.nft_token_id, trending?.image);
 
   return (
     <section className={styles.heroSection}>
@@ -162,12 +149,19 @@ const Hero: React.FC = () => {
         <div className={`glass-panel blue-border glow-blue ${styles.trendingCard}`} style={{ minHeight: '380px', display: 'flex', flexDirection: 'column' }}>
           <div className={styles.trendingBadge}>
             <span className="material-symbols-outlined pulse-live">trending_up</span>
-            <span>Xu Hướng {trending && `(🔥 ${Number(trending.hot_score || 0).toFixed(1)})`}</span>
+            <span>Xu Hướng</span>
           </div>
           {trending ? (
             <>
               <div className={styles.trendingImgContainer}>
-                <img src={trendingImage} alt="Trending NFT" className={styles.trendingImg} />
+                {trendingImage ? (
+                  <img src={trendingImage} alt="Trending NFT" className={styles.trendingImg} />
+                ) : (
+                  <div className={styles.placeholderImage}>
+                    <span className="material-symbols-outlined">image_not_supported</span>
+                    <span>Không có ảnh</span>
+                  </div>
+                )}
               </div>
               <div className={styles.trendingContent}>
                 <div className={styles.creatorInfo}>
