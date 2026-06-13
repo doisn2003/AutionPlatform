@@ -44,21 +44,7 @@ const QuickActions: React.FC = () => {
       </div>
 
       {/* Faucet */}
-      <div className={`glass-panel ${styles.card}`}>
-        <div className={styles.cardIcon}>
-          <span className="material-symbols-outlined text-blue">water_drop</span>
-        </div>
-        <div className={styles.cardContent}>
-          <span className={styles.cardLabel}>Faucet miễn phí</span>
-          <button
-            className="btn btn-gradient btn-sm"
-            onClick={() => faucet()}
-            disabled={isFauceting || isFaucetConfirming}
-          >
-            {isFauceting ? 'Đang gửi...' : isFaucetConfirming ? 'Đang xác nhận...' : '+ 10 ADF'}
-          </button>
-        </div>
-      </div>
+      
 
       {/* Tiền chờ rút */}
       <div className={`glass-panel ${styles.card}`}>

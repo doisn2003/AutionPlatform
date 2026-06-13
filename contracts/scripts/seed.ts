@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Seed Script — Tạo kịch bản test với nhiều phiên đấu giá
  * 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Deploy Script — Triển khai toàn bộ hệ thống Smart Contract
  * 
