@@ -107,40 +107,40 @@ async function main() {
   const duration1 = 300n; // 5 phút = 300 giây
   const reserve1 = 1n * unit; // 1 ADF
   const increment1 = unit / 10n; // 0.1 ADF
-  await exchange.write.createAuction([1n, duration1, reserve1, increment1], { account: seller1.account });
-  console.log("   ✅ Phiên #1: 'Quick Test' — 5 phút, giá khởi điểm 1 ADF, bước nhảy 0.1 ADF");
+  await exchange.write.createAuction([1n, duration1, reserve1, increment1, 0, 0, 0n], { account: seller1.account });
+  console.log("   ✅ Phiên #1: 'Quick Test' — 5 phút, giá khởi điểm 1 ADF, bước nhảy 0.1 ADF (Digital)");
 
-  // Phiên 2: "Bộ Sưu Tập Vũ Trụ" — 2 giờ
+  // Phiên 2: "Bộ Sưu Tập Vũ Trụ" — 2 giờ (Physical)
   const duration2 = 7200n; // 2 giờ
   const reserve2 = 5n * unit; // 5 ADF
   const increment2 = unit / 2n; // 0.5 ADF
-  await exchange.write.createAuction([2n, duration2, reserve2, increment2], { account: seller1.account });
-  console.log("   ✅ Phiên #2: 'Bộ Sưu Tập Vũ Trụ' — 2 giờ, giá khởi điểm 5 ADF, bước nhảy 0.5 ADF");
+  await exchange.write.createAuction([2n, duration2, reserve2, increment2, 1, 1, 7n * 86400n], { account: seller1.account });
+  console.log("   ✅ Phiên #2: 'Bộ Sưu Tập Vũ Trụ' — 2 giờ, giá khởi điểm 5 ADF, bước nhảy 0.5 ADF (Physical/Escrow)");
 
   // Phiên 3: "Nghệ Thuật Số" — 1 giờ, ĐÃ CÓ 2 LƯỢT BID
   const duration3 = 3600n; // 1 giờ
   const reserve3 = 2n * unit; // 2 ADF
   const increment3 = unit / 5n; // 0.2 ADF  
-  await exchange.write.createAuction([3n, duration3, reserve3, increment3], { account: seller1.account });
+  await exchange.write.createAuction([3n, duration3, reserve3, increment3, 0, 0, 0n], { account: seller1.account });
   // Buyer1 bid 2 ADF
   await exchange.write.bid([3n, reserve3], { account: buyer1.account });
   // Buyer2 bid 2.5 ADF
   await exchange.write.bid([3n, reserve3 + increment3 + increment3 + increment3], { account: buyer2.account });
-  console.log("   ✅ Phiên #3: 'Nghệ Thuật Số' — 1 giờ, đã có 2 bid (buyer2 đang dẫn 2.6 ADF)");
+  console.log("   ✅ Phiên #3: 'Nghệ Thuật Số' — 1 giờ, đã có 2 bid (buyer2 đang dẫn 2.6 ADF) (Digital)");
 
-  // Phiên 4: "Mật Mã Tự Nhiên" — 10 phút
+  // Phiên 4: "Mật Mã Tự Nhiên" — 10 phút (Physical)
   const duration4 = 600n; // 10 phút
   const reserve4 = 3n * unit; // 3 ADF
   const increment4 = unit; // 1 ADF
-  await exchange.write.createAuction([4n, duration4, reserve4, increment4], { account: seller2.account });
-  console.log("   ✅ Phiên #4: 'Mật Mã Tự Nhiên' — 10 phút, giá khởi điểm 3 ADF, bước nhảy 1 ADF");
+  await exchange.write.createAuction([4n, duration4, reserve4, increment4, 1, 1, 7n * 86400n], { account: seller2.account });
+  console.log("   ✅ Phiên #4: 'Mật Mã Tự Nhiên' — 10 phút, giá khởi điểm 3 ADF, bước nhảy 1 ADF (Physical)");
 
   // Phiên 5: "Sự Tĩnh Lặng" — 1 giờ, không có bid
   const duration5 = 3600n; // 1 giờ
   const reserve5 = 10n * unit; // 10 ADF  
   const increment5 = 2n * unit; // 2 ADF
-  await exchange.write.createAuction([5n, duration5, reserve5, increment5], { account: seller2.account });
-  console.log("   ✅ Phiên #5: 'Sự Tĩnh Lặng' — 1 giờ, giá khởi điểm 10 ADF, bước nhảy 2 ADF");
+  await exchange.write.createAuction([5n, duration5, reserve5, increment5, 0, 0, 0n], { account: seller2.account });
+  console.log("   ✅ Phiên #5: 'Sự Tĩnh Lặng' — 1 giờ, giá khởi điểm 10 ADF, bước nhảy 2 ADF (Digital)");
 
   // ---- Tổng kết ----
   console.log("\n=========================================");

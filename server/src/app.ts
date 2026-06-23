@@ -3,6 +3,7 @@ import cors from 'cors';
 import auctionRoutes from './routes/auctionRoutes';
 import ipfsRoutes from './routes/ipfsRoutes';
 import nftRoutes from './routes/nftRoutes';
+import categoryRoutes from './routes/categoryRoutes';
 
 const app: Application = express();
 
@@ -15,6 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auctions', auctionRoutes);
 app.use('/api/ipfs', ipfsRoutes);
 app.use('/api/nfts', nftRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Healthcheck Route
 app.get('/api/health', (req: Request, res: Response) => {
