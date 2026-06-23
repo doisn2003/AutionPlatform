@@ -3,9 +3,11 @@ import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
 import { useApproveNFT, useCreateAuction } from '../../hooks/useContractActions';
 import { useNFTApproved } from '../../hooks/useReadContract';
-import { CONTRACT_ADDRESSES } from '../../config/contracts';
+import { CONTRACT_ADDRESSES, API_URL } from '../../config/contracts';
 import styles from './CreateAuctionModal.module.css';
 import { useNFTImage } from '../../hooks/useNFTImage';
+import CategorySelector from '../common/CategorySelector';
+import type { AssetCategory } from '../common/CategorySelector';
 
 interface CreateAuctionModalProps {
   nft: {
@@ -39,6 +41,8 @@ const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, o
   } = useCreateAuction();
 
   // Form states
+  const [categories, setCategories] = useState<AssetCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<AssetCategory | null>(null);
   const [reservePrice, setReservePrice] = useState('10');
   const [minBidIncrement, setMinBidIncrement] = useState('1');
   const [duration, setDuration] = useState('5');
@@ -47,6 +51,20 @@ const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, o
   // Flow step state: 'form' | 'approving' | 'creating' | 'success' | 'error'
   const [step, setStep] = useState<'form' | 'approving' | 'creating' | 'success' | 'error'>('form');
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Fetch categories
+  useEffect(() => {
+    fetch(`${API_URL}/api/categories`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.data && Array.isArray(data.data)) {
+          setCategories(data.data);
+        } else if (Array.isArray(data)) {
+          setCategories(data);
+        }
+      })
+      .catch(err => console.error("Failed to fetch categories:", err));
+  }, []);
 
   // Check if token is already approved for AuctionExchange
   const isApproved =
@@ -59,11 +77,19 @@ const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, o
         // Proceed to create auction automatically
         setStep('creating');
         const durationSeconds = getDurationInSeconds();
+        
+        const assetType = selectedCategory?.asset_type === 'PHYSICAL' ? 1 : 0;
+        const disputeType = selectedCategory?.asset_type === 'PHYSICAL' ? 1 : 0;
+        const escrowDuration = selectedCategory?.asset_type === 'PHYSICAL' ? 7n * 86400n : 0n;
+
         createAuction(
           BigInt(nft.token_id),
           durationSeconds,
           parseUnits(reservePrice, 18),
-          parseUnits(minBidIncrement, 18)
+          parseUnits(minBidIncrement, 18),
+          assetType,
+          disputeType,
+          escrowDuration
         );
       });
     }
@@ -110,6 +136,11 @@ const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, o
       return;
     }
 
+    if (!selectedCategory) {
+      alert('Vui lòng chọn danh mục tài sản.');
+      return;
+    }
+
     const durationSeconds = getDurationInSeconds();
     const reservePriceWei = parseUnits(reservePrice, 18);
     const minBidIncrementWei = parseUnits(minBidIncrement, 18);
@@ -123,12 +154,24 @@ const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, o
       return;
     }
 
+    const assetType = selectedCategory.asset_type === 'PHYSICAL' ? 1 : 0;
+    const disputeType = selectedCategory.asset_type === 'PHYSICAL' ? 1 : 0;
+    const escrowDuration = selectedCategory.asset_type === 'PHYSICAL' ? 7n * 86400n : 0n;
+
     if (!isApproved) {
       setStep('approving');
       approveNFT(BigInt(nft.token_id));
     } else {
       setStep('creating');
-      createAuction(BigInt(nft.token_id), durationSeconds, reservePriceWei, minBidIncrementWei);
+      createAuction(
+        BigInt(nft.token_id), 
+        durationSeconds, 
+        reservePriceWei, 
+        minBidIncrementWei,
+        assetType,
+        disputeType,
+        escrowDuration
+      );
     }
   };
 
@@ -139,7 +182,7 @@ const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, o
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={`glass-panel gold-border ${styles.modal}`} onClick={(e) => e.stopPropagation()}>
+      <div className={`glass-panel gold-border ${styles.modal}`} style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className={styles.header}>
           <h3 className={styles.title}>Tạo Phiên Đấu Giá</h3>
@@ -166,6 +209,17 @@ const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, o
 
         {step === 'form' && (
           <form onSubmit={handleSubmit}>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Phân loại tài sản <span className="text-gold">*</span></label>
+              <div style={{ marginTop: '8px' }}>
+                <CategorySelector 
+                  categories={categories} 
+                  selectedCategoryCode={selectedCategory?.category_code || ''} 
+                  onSelect={setSelectedCategory} 
+                />
+              </div>
+            </div>
+
             <div className={styles.formGroup}>
               <label className={styles.label}>Giá đấu khởi điểm <span className="text-gold">*</span></label>
               <div className={styles.inputWrapper}>

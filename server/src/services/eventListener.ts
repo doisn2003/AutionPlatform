@@ -99,17 +99,31 @@ async function catchupEvents(): Promise<void> {
 // ---- Event Handlers ----
 
 async function handleAuctionCreated(event: any): Promise<void> {
-  const { auctionId, seller, nftTokenId, endTime, reservePrice, minBidIncrement } = event.args;
+  const { auctionId, seller, nftTokenId, endTime, reservePrice, minBidIncrement, assetType, disputeType, escrowDuration } = event.args;
   const txHash = event.transactionHash;
   const blockNumber = event.blockNumber;
 
   // Chuyển endTime (unix timestamp) sang Date
   const endTimeDate = new Date(Number(endTime) * 1000);
+  
+  // Tính escrow_deadline nếu là PHYSICAL
+  let escrowDeadlineDate = null;
+  if (assetType === 1) {
+    escrowDeadlineDate = new Date((Number(endTime) + Number(escrowDuration)) * 1000);
+  }
+
+  const assetTypeStr = assetType === 1 ? 'PHYSICAL' : 'DIGITAL';
+  let disputeTypeStr = 'NONE';
+  if (disputeType === 1) disputeTypeStr = 'ADMIN_RESOLVE';
+  else if (disputeType === 2) disputeTypeStr = 'VOTE_RESOLVE';
 
   try {
     await pool.query(
-      `INSERT INTO auctions (auction_id, seller, nft_token_id, end_time, reserve_price, min_bid_increment, tx_hash, block_number)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO auctions (
+         auction_id, seller, nft_token_id, end_time, reserve_price, 
+         min_bid_increment, tx_hash, block_number, asset_type, dispute_type, phase, escrow_deadline
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        ON CONFLICT (auction_id) DO NOTHING`,
       [
         Number(auctionId),
@@ -120,6 +134,10 @@ async function handleAuctionCreated(event: any): Promise<void> {
         minBidIncrement.toString(),
         txHash,
         Number(blockNumber),
+        assetTypeStr,
+        disputeTypeStr,
+        'BIDDING',
+        escrowDeadlineDate ? escrowDeadlineDate.toISOString() : null
       ]
     );
 

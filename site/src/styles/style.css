@@ -1346,3 +1346,46 @@ h1, h2, h3, h4, h5, h6 {
         text-align: center;
     }
 }
+
+/* ==========================================================================
+   Category Selector
+   ========================================================================== */
+.category-group h4 {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 12px;
+}
+
+.category-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.category-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.category-item.selected {
+    background: rgba(242, 202, 80, 0.08);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    box-shadow: 0 0 15px rgba(242, 202, 80, 0.2);
+}

@@ -91,13 +91,16 @@ export function useCreateAuction() {
     tokenId: bigint,
     durationSeconds: bigint,
     reservePrice: bigint,
-    minBidIncrement: bigint
+    minBidIncrement: bigint,
+    assetType: number,
+    disputeType: number,
+    escrowDuration: bigint
   ) => {
     writeContract({
       address: CONTRACT_ADDRESSES.AuctionExchange,
       abi: AUCTION_EXCHANGE_ABI,
       functionName: 'createAuction',
-      args: [tokenId, durationSeconds, reservePrice, minBidIncrement],
+      args: [tokenId, durationSeconds, reservePrice, minBidIncrement, assetType, disputeType, escrowDuration],
     });
   };
 
