@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADF | Sàn Đấu Giá Vật Phẩm Tự Do </title>
+    <!-- Fonts and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Anybody:wght@100;200;300;400;600;800&family=Hanken+Grotesk:wght@300;400;600;800&family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Background Framework Grid & Glows -->
+    <div class="grid-overlay"></div>
+    <div class="glow-spot-gold"></div>
+    <div class="glow-spot-blue"></div>
+
+    <!-- Header Navigation -->
+    <header class="header">
+        <div class="container header-container">
+            <!-- Brand Logo -->
+            <a href="index.html" class="logo">
+                <span class="material-symbols-outlined text-gold">diamond</span>
+                <span class="logo-text">ADF<span>.</span></span>
+            </a>
+
+            <!-- Nav Links -->
+            <nav class="nav">
+                <a href="index.html" class="nav-link active">Trang chủ</a>
+                <a href="mint.html" class="nav-link">Đúc vật phẩm</a>
+                <a href="exchange.html" class="nav-link">Giao dịch</a>
+                <a href="guide.html" class="nav-link">Hướng dẫn</a>
+            </nav>
+
+            <!-- Actions (Connect Wallet / User Profile) -->
+            <div class="actions">
+                <button class="btn btn-primary" id="connectWalletBtn">
+                    <span class="material-symbols-outlined">account_balance_wallet</span>
+                    <span class="btn-text">Kết nối ví</span>
+                </button>
+                <div class="avatar-space" title="Hồ sơ cá nhân">
+                    <img src="https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=100&auto=format&fit=crop&q=60" alt="Avatar" class="avatar-img">
+                    <span class="status-indicator"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Section -->
+    <main class="container">
+        
+        <!-- Hero Section Bento Grid -->
+        <section class="hero-section">
+            
+            <!-- Hero Left: Featured upcoming lot -->
+            <div class="hero-left gold-border">
+                <div class="hero-badge">
+                    <span class="material-symbols-outlined pulse-live">schedule</span>
+                    <span>Sắp Diễn Ra</span>
+                </div>
+                <div class="hero-content">
+                    <h1 class="hero-title text-gradient">Đại Lộ Tương Lai #09</h1>
+                    <p class="hero-desc">Bộ sưu tập nghệ thuật kỹ thuật số độc bản được đúc trực tiếp bởi nghệ sĩ trẻ. Trải nghiệm không gian ảo đa chiều cùng các đặc quyền độc quyền dành riêng cho người sở hữu.</p>
+                    
+                    <div class="hero-info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Giá khởi điểm</span>
+                            <span class="info-value text-gold">1.5 ETH</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Thời gian bắt đầu</span>
+                            <span class="info-value countdown" id="heroCountdown">02:14:45</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Người sáng lập</span>
+                            <span class="info-value text-gradient font-headline" style="font-weight:600;">@CryptoArtist</span>
+                        </div>
+                    </div>
+
+                    <div class="hero-actions">
+                        <button class="btn btn-gradient">Đặt thông báo</button>
+                        <button class="btn btn-outline">Chi tiết bộ sưu tập</button>
+                    </div>
+                </div>
+                <div class="hero-bg-overlay" style="background-image: linear-gradient(to right, rgba(10, 10, 11, 0.95) 45%, rgba(10, 10, 11, 0.3)), url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80');"></div>
+            </div>
+
+            <!-- Hero Right: Trending lot -->
+            <div class="hero-right">
+                <div class="trending-card glass-panel blue-border glow-blue">
+                    <div class="trending-badge">
+                        <span class="material-symbols-outlined pulse-live">trending_up</span>
+                        <span>Xu Hướng</span>
+                    </div>
+                    <div class="trending-img-container">
+                        <img src="https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=500&auto=format&fit=crop&q=80" alt="Trending NFT" class="trending-img">
+                    </div>
+                    <div class="trending-content">
+                        <div class="creator-info">
+                            <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=50&auto=format&fit=crop&q=80" alt="Creator" class="creator-avatar">
+                            <span>Đúc bởi <strong>@MinhAnh_Art</strong></span>
+                        </div>
+                        <h3 class="trending-title">Hồn Việt Trong Kỹ Thuật Số</h3>
+                        <div class="bid-info">
+                            <div>
+                                <span class="info-label">Giá cao nhất</span>
+                                <div class="bid-value text-gold">2.8 ETH</div>
+                            </div>
+                            <div class="text-right">
+                                <span class="info-label">Kết thúc sau</span>
+                                <div class="timer text-blue">4h 15m</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary w-full">Đấu giá ngay</button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- NFT Marketplace Section -->
+        <section class="marketplace-section">
+            <div class="section-header">
+                <h2 class="section-title text-gradient">Khám Phá Vật Phẩm</h2>
+                
+                <!-- Filter Tabs -->
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-filter="all">Tất cả</button>
+                    <button class="filter-tab" data-filter="active">Đang diễn ra</button>
+                    <button class="filter-tab" data-filter="upcoming">Sắp diễn ra</button>
+                    <button class="filter-tab" data-filter="ended">Đã kết thúc</button>
+                </div>
+            </div>
+
+            <!-- NFT Grid -->
+            <div class="nft-grid" id="nftGrid">
+                
+                <!-- Card 1: Active -->
+                <div class="nft-card glass-panel glow-blue" data-status="active">
+                    <div class="card-status status-active">Đang diễn ra</div>
+                    <div class="card-img-container">
+                        <img src="https://images.unsplash.com/photo-1644024276223-4411136b672e?w=500&auto=format&fit=crop&q=80" alt="NFT 1" class="card-img">
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title">Vũ Trụ Vô Hạn #01</h3>
+                        <div class="card-creator">Người đúc: @CosmicCreator</div>
+                        <div class="card-bid-row">
+                            <div>
+                                <span class="card-label">Giá hiện tại</span>
+                                <span class="card-value text-gold">0.85 ETH</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="card-label">Thời gian còn lại</span>
+                                <span class="card-value text-blue font-mono">03h 12m</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-sm w-full">Đấu Giá</button>
+                    </div>
+                </div>
+
+                <!-- Card 2: Upcoming -->
+                <div class="nft-card glass-panel glow-gold" data-status="upcoming">
+                    <div class="card-status status-upcoming">Sắp diễn ra</div>
+                    <div class="card-img-container">
+                        <img src="https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=500&auto=format&fit=crop&q=80" alt="NFT 2" class="card-img">
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title">Cyber Sài Gòn 3000</h3>
+                        <div class="card-creator">Người đúc: @SaigonPunk</div>
+                        <div class="card-bid-row">
+                            <div>
+                                <span class="card-label">Giá khởi điểm</span>
+                                <span class="card-value text-gold">1.2 ETH</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="card-label">Bắt đầu sau</span>
+                                <span class="card-value font-mono" style="color: #a855f7;">12h 45m</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-outline btn-sm w-full">Xem chi tiết</button>
+                    </div>
+                </div>
+
+                <!-- Card 3: Ended -->
+                <div class="nft-card glass-panel" data-status="ended" style="opacity: 0.75;">
+                    <div class="card-status status-ended">Đã kết thúc</div>
+                    <div class="card-img-container" style="filter: grayscale(1);">
+                        <img src="https://images.unsplash.com/photo-1618005198143-d366800e72dd?w=500&auto=format&fit=crop&q=80" alt="NFT 3" class="card-img">
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title" style="color: var(--text-secondary);">Giấc Mơ Neon</h3>
+                        <div class="card-creator">Người đúc: @DreamWeaver</div>
+                        <div class="card-bid-row">
+                            <div>
+                                <span class="card-label">Giá bán</span>
+                                <span class="card-value text-muted">2.1 ETH</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="card-label">Chủ sở hữu</span>
+                                <span class="card-value font-mono">@crypto_king</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-disabled btn-sm w-full" disabled>Hoàn Thành</button>
+                    </div>
+                </div>
+
+                <!-- Card 4: Active -->
+                <div class="nft-card glass-panel glow-blue" data-status="active">
+                    <div class="card-status status-active">Đang diễn ra</div>
+                    <div class="card-img-container">
+                        <img src="https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=500&auto=format&fit=crop&q=80" alt="NFT 4" class="card-img">
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title">Mật Mã Tự Nhiên</h3>
+                        <div class="card-creator">Người đúc: @BioArt</div>
+                        <div class="card-bid-row">
+                            <div>
+                                <span class="card-label">Giá hiện tại</span>
+                                <span class="card-value text-gold">0.45 ETH</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="card-label">Thời gian còn lại</span>
+                                <span class="card-value text-blue font-mono">01h 45m</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-sm w-full">Đấu Giá</button>
+                    </div>
+                </div>
+
+                <!-- Card 5: Active -->
+                <div class="nft-card glass-panel glow-blue" data-status="active">
+                    <div class="card-status status-active">Đang diễn ra</div>
+                    <div class="card-img-container">
+                        <img src="https://images.unsplash.com/photo-1617791160505-6f006e121980?w=500&auto=format&fit=crop&q=80" alt="NFT 5" class="card-img">
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title">Sự Tĩnh Lặng Của Đá</h3>
+                        <div class="card-creator">Người đúc: @ZenArtist</div>
+                        <div class="card-bid-row">
+                            <div>
+                                <span class="card-label">Giá hiện tại</span>
+                                <span class="card-value text-gold">1.15 ETH</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="card-label">Thời gian còn lại</span>
+                                <span class="card-value text-blue font-mono">08h 19m</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-sm w-full">Đấu Giá</button>
+                    </div>
+                </div>
+
+                <!-- Card 6: Ended -->
+                <div class="nft-card glass-panel" data-status="ended" style="opacity: 0.75;">
+                    <div class="card-status status-ended">Đã kết thúc</div>
+                    <div class="card-img-container" style="filter: grayscale(1);">
+                        <img src="https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=500&auto=format&fit=crop&q=80" alt="NFT 6" class="card-img">
+                    </div>
+                    <div class="card-content">
+                        <h3 class="card-title" style="color: var(--text-secondary);">Ký Ức Thời Gian</h3>
+                        <div class="card-creator">Người đúc: @TimeTraveler</div>
+                        <div class="card-bid-row">
+                            <div>
+                                <span class="card-label">Giá bán</span>
+                                <span class="card-value text-muted">0.95 ETH</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="card-label">Chủ sở hữu</span>
+                                <span class="card-value font-mono">@whale_investor</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-disabled btn-sm w-full" disabled>Hoàn Thành</button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-container">
+            <div class="footer-logo logo">
+                <span class="material-symbols-outlined text-gold">diamond</span>
+                <span class="logo-text">Obsidian<span>.</span></span>
+            </div>
+            <p class="footer-copy">© 2026 Obsidian. Sàn đấu giá phi tập trung dành cho các tác phẩm tự đúc.</p>
+            <div class="footer-links">
+                <a href="#">Điều khoản</a>
+                <a href="#">Bảo mật</a>
+                <a href="#">Liên hệ</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive JS -->
+    <script>
+        // Filter tabs logic
+        const filterButtons = document.querySelectorAll('.filter-tab');
+        const nftCards = document.querySelectorAll('.nft-card');
+
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                const filterValue = button.getAttribute('data-filter');
+
+                nftCards.forEach(card => {
+                    if (filterValue === 'all') {
+                        card.style.display = 'flex';
+                    } else {
+                        const status = card.getAttribute('data-status');
+                        if (status === filterValue) {
+                            card.style.display = 'flex';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        });
+
+        // Wallet Connection Simulation
+        const connectBtn = document.getElementById('connectWalletBtn');
+        const avatarSpace = document.querySelector('.avatar-space');
+        let isConnected = false;
+
+        connectBtn.addEventListener('click', () => {
+            isConnected = !isConnected;
+            if (isConnected) {
+                connectBtn.innerHTML = '<span class="material-symbols-outlined text-gold">check_circle</span><span class="btn-text">0x71C...39B</span>';
+                connectBtn.classList.add('connected');
+                avatarSpace.classList.add('visible');
+            } else {
+                connectBtn.innerHTML = '<span class="material-symbols-outlined">account_balance_wallet</span><span class="btn-text">Kết nối ví</span>';
+                connectBtn.classList.remove('connected');
+                avatarSpace.classList.remove('visible');
+            }
+        });
+
+        // Countdown Timer simulation
+        const countdownElement = document.getElementById('heroCountdown');
+        let totalSeconds = 2 * 3600 + 14 * 60 + 45; // 02:14:45
+
+        setInterval(() => {
+            if (totalSeconds > 0) {
+                totalSeconds--;
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                
+                countdownElement.textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+.nftCard {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nftCard:hover {
+  transform: translateY(-4px);
+}
+
+.endedOpacity {
+  opacity: 0.65;
+}
+
+.endedOpacity:hover {
+  opacity: 0.85;
+}
+
+.cardStatus {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 12px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: var(--radius-full);
+  z-index: 2;
+}
+
+.statusActive {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.statusExpiring {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.statusEnded {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.cardImgContainer {
+  width: 100%;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.endedImg {
+  filter: grayscale(40%);
+}
+
+.cardImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nftCard:hover .cardImg {
+  transform: scale(1.05);
+}
+
+.cardContent {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.cardCreator {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.cardBidRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 4px;
+}
+
+.cardLabel {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.cardValue {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.placeholderImage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.06) 100%);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.placeholderImage span:first-child {
+  font-size: 2.2rem;
+  color: var(--color-primary-container);
+  opacity: 0.7;
+}
+
