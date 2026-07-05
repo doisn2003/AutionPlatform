@@ -14,9 +14,15 @@ interface IAuctionExchange {
     );
 }
 
+interface IADF_Pool {
+    function withdrawJurorReward(uint256 amount) external;
+    function reserveADF() external view returns (uint256);
+}
+
 contract DisputeResolution is ReentrancyGuard, Ownable {
     IERC20 public adfToken;
     IAuctionExchange public auctionExchange;
+    IADF_Pool public adfPool;
     address public serverOracle;
 
     // ====== HẰNG SỐ ======
@@ -79,6 +85,17 @@ contract DisputeResolution is ReentrancyGuard, Ownable {
     event EvidenceSubmitted(uint256 indexed disputeId, address indexed party, string evidenceIPFS);
     event PhaseAdvanced(uint256 indexed disputeId, DisputePhase newPhase);
     event DurationsUpdated(uint256 evidence, uint256 commit, uint256 reveal);
+    event VoteCommitted(uint256 indexed disputeId, address indexed juror, bytes32 commitHash);
+    event VoteRevealed(uint256 indexed disputeId, address indexed juror, uint8 vote);
+    event DisputeResolved(
+        uint256 indexed disputeId, 
+        address winner, 
+        uint8 buyerVotes, 
+        uint8 sellerVotes, 
+        uint8 abstainCount
+    );
+    event JurorRewarded(address indexed juror, uint256 amount);
+    event JurorPenalized(address indexed juror, uint256 amount);
 
     constructor(address _adfToken) Ownable(msg.sender) {
         adfToken = IERC20(_adfToken);
@@ -94,6 +111,12 @@ contract DisputeResolution is ReentrancyGuard, Ownable {
     function setServerOracle(address _serverOracle) external onlyOwner {
         require(_serverOracle != address(0), "Invalid address");
         serverOracle = _serverOracle;
+    }
+
+    /// @notice Thiết lập địa chỉ AMM Pool contract
+    function setAdfPool(address _adfPool) external onlyOwner {
+        require(_adfPool != address(0), "Invalid address");
+        adfPool = IADF_Pool(_adfPool);
     }
 
     /// @notice Thiết lập thời hạn của các pha (chủ yếu phục vụ demo hoặc điều chỉnh sau này)
@@ -212,6 +235,176 @@ contract DisputeResolution is ReentrancyGuard, Ownable {
         emit PhaseAdvanced(_disputeId, DisputePhase.COMMIT);
     }
 
+    /// @notice Tự động cập nhật pha dựa trên mốc thời gian hết hạn
+    function checkAndUpdatePhase(uint256 _disputeId) public {
+        Dispute storage dispute = disputes[_disputeId];
+        
+        // Kiểm tra nếu đang ở pha COMMIT và đã hết hạn commitDeadline, tự động chuyển pha sang REVEAL
+        if (dispute.phase == DisputePhase.COMMIT && block.timestamp > dispute.commitDeadline) {
+            dispute.phase = DisputePhase.REVEAL;
+            dispute.revealDeadline = block.timestamp + revealDuration;
+            emit PhaseAdvanced(_disputeId, DisputePhase.REVEAL);
+        }
+    }
+
+    /// @notice Juror tiến hành gửi hash phiếu biểu quyết bí mật
+    function commitVote(uint256 _disputeId, bytes32 _commitHash) external {
+        // 1. Tự động kiểm tra cập nhật pha theo thời gian
+        checkAndUpdatePhase(_disputeId);
+
+        Dispute storage dispute = disputes[_disputeId];
+
+        // 2. Đảm bảo trnah chấp đang ở phase commit
+        require(dispute.phase == DisputePhase.COMMIT, "Wrong phase");
+
+        // 3. Xác định jurorIndex của người gọi (nếu khôgn phải juror sẽ tự động revert)
+        uint8 jurorIndex = getJurorIndex(_disputeId, msg.sender);
+        require(!dispute.hasCommitted[jurorIndex], "Already committed");
+
+        // 4. Lưu hash và đánh dấu đã commit
+        dispute.commitHashes[jurorIndex] = _commitHash;
+        dispute.hasCommitted[jurorIndex] = true;
+
+        emit VoteCommitted(_disputeId, msg.sender, _commitHash);
+
+        // 5. Tự động chuyển pha sang REVEAL nếu cả 5 trọng tài đều đã commit xong trước thời hạn
+        uint8 commitCount = 0;
+        for (uint8 i = 0; i < NUM_JURORS; i++) {
+            if (dispute.hasCommitted[i]) {
+                commitCount++;
+            }
+        }
+        
+        if (commitCount == NUM_JURORS) {
+            dispute.phase = DisputePhase.REVEAL;
+            dispute.revealDeadline = block.timestamp + revealDuration;
+            emit PhaseAdvanced(_disputeId, DisputePhase.REVEAL);
+        }
+    }
+
+    /// @notice Juror tiến hành mở phiếu biểu quyết
+    function revealVote(uint256 _disputeId, uint8 _vote, string calldata _salt) external {
+        // 1. Tu động kiểm tra cập nhật pha theo thời gian
+        checkAndUpdatePhase(_disputeId);
+
+        Dispute storage dispute = disputes[_disputeId];
+
+        // 2. Đang ở pha REVEAL của tranh chấp và chưa hết hạn reveal
+        require(dispute.phase == DisputePhase.REVEAL, "Wrong phase");
+        require(block.timestamp <= dispute.revealDeadline, "Reveal deadline passed");
+
+        // 3. Xác định jurorIndex của người gọi
+        uint8 jurorIndex = getJurorIndex(_disputeId, msg.sender);
+
+        // 4. Đảm bảo trọng tài đã commit ở pha trước và chưa từng reveal ở pha này
+        require(dispute.hasCommitted[jurorIndex], "Not committed");
+        require(!dispute.hasRevealed[jurorIndex], "Already revealed");
+
+        // 5. Hợp lệ <=> 1 == buyer thắng, 2 == Seller thắng
+        require(_vote == 1 || _vote == 2, "Invalid vote");
+
+        // 6. Tính toán lại hash và đối chiếu
+        bytes32 calculatedHash = keccak256(abi.encodePacked(_vote, _salt));
+        require(calculatedHash == dispute.commitHashes[jurorIndex], "Hash mismatch");
+
+        // 7. Ghi nhận kết quả và cập nhật tổng số phiếu bầu
+        dispute.revealedVotes[jurorIndex] = _vote;
+        dispute.hasRevealed[jurorIndex] = true;
+
+        if (_vote == 1) {
+            dispute.buyerVotes++;
+        } else {
+            dispute.sellerVotes++;
+        }
+
+        emit VoteRevealed(_disputeId, msg.sender, _vote);
+    }
+
+    /// @notice Kết thúc tranh chấp - phân xử kết quả và phân phối thưởng phạt cho Trọng tài
+    function resolveDispute(uint256 _disputeId) external nonReentrant {
+        Dispute storage dispute = disputes[_disputeId];
+        
+        // 1. Đảm bảo tranh chấp đang ở pha REVEAL và đã hết hạn revealDeadline
+        require(block.timestamp > dispute.revealDeadline, "Reveal not ended");
+        require(dispute.phase == DisputePhase.REVEAL, "Wrong phase");
+        require(!dispute.resolved, "Already resolved");
+        
+        // 2. Đếm số Trọng tài không commit/reveal (Abstain)
+        for (uint8 i = 0; i < NUM_JURORS; i++) {
+            if (!dispute.hasRevealed[i]) {
+                dispute.abstainCount++;
+            }
+        }
+        
+        // 3. Xác định kết quả thắng cuộc:
+        bool buyerWins;
+        if(dispute.buyerVotes == 0 && dispute.sellerVotes == 0) {
+            // Tất cả Trọng tài đều bỏ phiếu trắng -> Mặc định Buyer thắng để bảo toàn tiền
+            buyerWins = true;
+        } else {
+            buyerWins = dispute.buyerVotes > dispute.sellerVotes;
+        }
+
+        // 4. Tính toán thưởng / phạt của juror
+        uint256 totalReward = 0;
+        for(uint8 i = 0; i < NUM_JURORS; i++) {
+            address juror = dispute.selectedJurors[i];
+
+            // Không vote (abstain) => Không thưởng / Không phạt
+            if(!dispute.hasRevealed[i]) {
+                continue;
+            }
+
+            bool voteCorrectly = (buyerWins && dispute.revealedVotes[i] == 1) || (!buyerWins && dispute.revealedVotes[i] == 2);
+            if(voteCorrectly) {
+                totalReward += JUROR_REWARD;
+                emit JurorRewarded(juror, JUROR_REWARD);
+            } else {
+                // Phạt trừ JUROR_PENALTY (100 ADF) khỏi stake. Nếu stake ít hơn 100 thì trừ sạch.
+                uint256 penalty = JUROR_PENALTY > jurorStakes[juror] ? jurorStakes[juror] : JUROR_PENALTY;
+                jurorStakes[juror] -= penalty;
+
+                // Chuyển tiền phạt của trọng tài sai về Pool AMM
+                require(adfToken.transfer(address(adfPool), penalty), "Penalty transfer failed");
+                emit JurorPenalized(juror, penalty);
+            }
+        }
+
+        // 5. Rút tiền thưởng cho juror từ pool AMM --> tặng cho juror đúng
+        if(totalReward > 0 && address(adfPool) != address(0) && adfPool.reserveADF() >= totalReward) {
+            adfPool.withdrawJurorReward(totalReward);
+            for (uint8 i = 0; i < NUM_JURORS; i++) {
+                if (dispute.hasRevealed[i]) {
+                    bool correct = (buyerWins && dispute.revealedVotes[i] == 1) || 
+                                (!buyerWins && dispute.revealedVotes[i] == 2);
+                    if (correct) {
+                        jurorStakes[dispute.selectedJurors[i]] += JUROR_REWARD;
+                    }
+                }
+            }
+        } 
+
+        // 6. Callback giải phóng ký quỹ về cho bên thắng trên AuctionExchange
+        if(buyerWins) {
+            auctionExchange.releaseEscrowToBuyer(dispute.auctionId);
+        } else {
+            auctionExchange.releaseEscrowToSeller(dispute.auctionId);
+        }
+        
+        // 7. Cập nhật trạng thái và phát sự kiện kết thúc
+        dispute.phase = DisputePhase.RESOLVED;
+        dispute.resolved = true;
+        emit DisputeResolved(
+            _disputeId,
+            buyerWins ? dispute.buyer : dispute.seller,
+            dispute.buyerVotes,
+            dispute.sellerVotes,
+            dispute.abstainCount
+        );
+
+
+    }
+
     // Helper kiểm tra ví trong danh sách trọng tài
     function getJurorIndex(uint256 _disputeId, address _juror) public view returns (uint8) {
         Dispute storage dispute = disputes[_disputeId];
@@ -221,5 +414,22 @@ contract DisputeResolution is ReentrancyGuard, Ownable {
             }
         }
         revert("Not selected juror");
+    }
+
+    /// @notice Lấy thông tin chi tiết trạng thái bỏ phiếu của một Trọng tài
+    function getDisputeJurorInfo(uint256 _disputeId, address _juror) external view returns (
+        bool hasCommitted,
+        bool hasRevealed,
+        bytes32 commitHash,
+        uint8 revealedVote
+    ) {
+        Dispute storage dispute = disputes[_disputeId];
+        uint8 index = getJurorIndex(_disputeId, _juror);
+        return (
+            dispute.hasCommitted[index],
+            dispute.hasRevealed[index],
+            dispute.commitHashes[index],
+            dispute.revealedVotes[index]
+        );
     }
 }
