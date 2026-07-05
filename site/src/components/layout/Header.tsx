@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import styles from './Header.module.css';
 import { formatAddress } from '../../utils/formatters';
+import { API_URL } from '../../config/contracts';
 
 const Header: React.FC = () => {
   const location = useLocation();
@@ -10,11 +11,25 @@ const Header: React.FC = () => {
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
 
+  const [avatar, setAvatar] = useState('https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=100&auto=format&fit=crop&q=60');
+
+  useEffect(() => {
+    if (isConnected && address) {
+      fetch(`${API_URL}/api/profile/${address}`)
+        .then(res => res.json())
+        .then(json => {
+          if (json.success && json.data?.avatar_url) {
+            setAvatar(json.data.avatar_url);
+          }
+        })
+        .catch(err => console.error('Error fetching header avatar:', err));
+    }
+  }, [isConnected, address]);
+
   const handleConnect = () => {
     if (isConnected) {
       disconnect();
     } else {
-      // Kết nối với connector đầu tiên (injected / MetaMask)
       const injectedConnector = connectors[0];
       if (injectedConnector) {
         connect({ connector: injectedConnector });
@@ -26,7 +41,8 @@ const Header: React.FC = () => {
     { name: 'Trang chủ', path: '/' },
     { name: 'Đúc vật phẩm', path: '/mint' },
     { name: 'Giao dịch', path: '/exchange' },
-    { name: 'Hướng dẫn', path: '/guide' },
+    { name: 'Quy đổi (AMM)', path: '/swap' },
+    { name: 'Bảng xếp hạng uy tín', path: '/reputation' },
   ];
 
   return (
@@ -70,14 +86,19 @@ const Header: React.FC = () => {
             )}
           </button>
           
-          <div className={`${styles.avatarSpace} ${isConnected ? styles.visible : ''}`} title="Hồ sơ cá nhân">
+          <Link 
+            to="/profile" 
+            className={`${styles.avatarSpace} ${isConnected ? styles.visible : ''}`} 
+            title="Hồ sơ cá nhân"
+            style={{ textDecoration: 'none' }}
+          >
             <img 
-              src="https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=100&auto=format&fit=crop&q=60" 
+              src={avatar} 
               alt="Avatar" 
               className={styles.avatarImg} 
             />
             <span className={styles.statusIndicator}></span>
-          </div>
+          </Link>
         </div>
       </div>
     </header>

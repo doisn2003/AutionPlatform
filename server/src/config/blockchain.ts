@@ -85,6 +85,22 @@ export const AUCTION_EXCHANGE_ABI = [
       { name: 'auctionId', type: 'uint256', indexed: true },
     ],
   },
+  {
+    type: 'event',
+    name: 'DeliveryConfirmed',
+    inputs: [
+      { name: 'auctionId', type: 'uint256', indexed: true },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DisputeOpened',
+    inputs: [
+      { name: 'auctionId', type: 'uint256', indexed: true },
+      { name: 'initiator', type: 'address', indexed: true },
+      { name: 'evidenceIPFS', type: 'string', indexed: false },
+    ],
+  },
   // Functions
   {
     type: 'function',

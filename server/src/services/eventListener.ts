@@ -8,6 +8,7 @@
 import { type Log } from 'viem';
 import { publicClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI, ADF_NFT_ABI, ADF_POOL_ABI } from '../config/blockchain';
 import pool from '../config/db';
+import { incrementUserStat } from './reputationService';
 
 // ---- Catchup: Đọc event cũ từ block đã lưu ----
 async function catchupEvents(): Promise<void> {
@@ -116,10 +117,36 @@ async function catchupEvents(): Promise<void> {
     await handleSwapADFForETH(event as any);
   }
 
+  // DeliveryConfirmed events
+  const deliveryEvents = await publicClient.getContractEvents({
+    address: CONTRACT_ADDRESSES.AuctionExchange,
+    abi: AUCTION_EXCHANGE_ABI,
+    eventName: 'DeliveryConfirmed',
+    fromBlock: fromBlock + 1n,
+    toBlock: currentBlock,
+  });
+
+  for (const event of deliveryEvents) {
+    await handleDeliveryConfirmed(event as any);
+  }
+
+  // DisputeOpened events
+  const disputeEvents = await publicClient.getContractEvents({
+    address: CONTRACT_ADDRESSES.AuctionExchange,
+    abi: AUCTION_EXCHANGE_ABI,
+    eventName: 'DisputeOpened',
+    fromBlock: fromBlock + 1n,
+    toBlock: currentBlock,
+  });
+
+  for (const event of disputeEvents) {
+    await handleDisputeOpened(event as any);
+  }
+
   // Cập nhật sync state
   await pool.query('UPDATE sync_state SET last_synced_block = $1, updated_at = NOW() WHERE id = 1', [currentBlock.toString()]);
 
-  console.log(`   ✅ Catchup done. Processed: ${createdEvents.length} created, ${bidEvents.length} bids, ${endedEvents.length} ended, ${canceledEvents.length} canceled, ${swapEthEvents.length + swapAdfEvents.length} swaps`);
+  console.log(`   ✅ Catchup done. Processed: ${createdEvents.length} created, ${bidEvents.length} bids, ${endedEvents.length} ended, ${canceledEvents.length} canceled, ${swapEthEvents.length + swapAdfEvents.length} swaps, ${deliveryEvents.length} deliveries, ${disputeEvents.length} disputes`);
 }
 
 // ---- Event Handlers ----
@@ -173,6 +200,9 @@ async function handleAuctionCreated(event: any): Promise<void> {
       [CONTRACT_ADDRESSES.AuctionExchange.toLowerCase(), Number(nftTokenId)]
     );
 
+    // Update user stats
+    await incrementUserStat(seller, 'total_auctions_created');
+
     console.log(`   📝 AuctionCreated #${auctionId} by ${seller}`);
   } catch (err) {
     console.error(`   ❌ Error saving AuctionCreated #${auctionId}:`, err);
@@ -223,6 +253,9 @@ async function handleBidPlaced(event: any): Promise<void> {
       console.log(`   🔥 Updated hot_score for Auction #${auctionId} to ${hotScore} (Bids: ${bidCount}, Vol: ${totalVolumeADF.toFixed(2)} ADF)`);
     }
 
+    // Update user stats
+    await incrementUserStat(bidder, 'total_bids_placed');
+
     console.log(`   💰 BidPlaced #${auctionId} by ${bidder} — ${amount.toString()} wei`);
   } catch (err) {
     console.error(`   ❌ Error saving BidPlaced #${auctionId}:`, err);
@@ -238,13 +271,29 @@ async function handleAuctionEnded(event: any): Promise<void> {
       [winner.toLowerCase(), amount.toString(), Number(auctionId)]
     );
 
-    // Get nft_token_id from the auction
-    const res = await pool.query(`SELECT nft_token_id, seller FROM auctions WHERE auction_id = $1`, [Number(auctionId)]);
+    // Get nft_token_id, seller, asset_type from the auction
+    const res = await pool.query(`SELECT nft_token_id, seller, asset_type FROM auctions WHERE auction_id = $1`, [Number(auctionId)]);
     if (res.rows.length > 0) {
-        const nftTokenId = res.rows[0].nft_token_id;
-        // If there is a winner (address != 0), update NFT owner. Otherwise, it returns to seller.
-        const newOwner = winner !== '0x0000000000000000000000000000000000000000' ? winner : res.rows[0].seller;
-        await pool.query(`UPDATE nfts SET owner = $1 WHERE token_id = $2`, [newOwner.toLowerCase(), nftTokenId]);
+      const { nft_token_id, seller, asset_type } = res.rows[0];
+      const hasWinner = winner !== '0x0000000000000000000000000000000000000000';
+      const newOwner = hasWinner ? winner : seller;
+      
+      // Update NFT owner in DB
+      await pool.query(`UPDATE nfts SET owner = $1 WHERE token_id = $2`, [newOwner.toLowerCase(), nft_token_id]);
+
+      // Update user stats
+      if (hasWinner) {
+        await incrementUserStat(winner, 'total_bids_won');
+        
+        // If DIGITAL asset, delivery is immediate -> successful_delivery + RESOLVED
+        if (asset_type === 'DIGITAL') {
+          await incrementUserStat(seller, 'successful_deliveries');
+          await pool.query(`UPDATE auctions SET phase = 'RESOLVED' WHERE auction_id = $1`, [Number(auctionId)]);
+        } else {
+          // PHYSICAL enters ESCROW_HOLDING
+          await pool.query(`UPDATE auctions SET phase = 'ESCROW_HOLDING' WHERE auction_id = $1`, [Number(auctionId)]);
+        }
+      }
     }
 
     console.log(`   🏁 AuctionEnded #${auctionId} — winner: ${winner}`);
@@ -314,6 +363,10 @@ async function handleNFTMinted(event: any): Promise<void> {
         Number(blockNumber),
       ]
     );
+
+    // Update user stats
+    await incrementUserStat(owner, 'total_nfts_minted');
+
     console.log(`   🖼️ NFTMinted #${tokenId} by ${owner}`);
   } catch (err) {
     console.error(`   ❌ Error saving NFTMinted #${tokenId}:`, err);
@@ -365,6 +418,52 @@ async function handleSwapADFForETH(event: any): Promise<void> {
     console.log(`   💱 SwapADFForETH: ${seller} swapped ${Number(adfIn)/1e18} ADF for ${Number(ethOut)/1e18} ETH`);
   } catch (err) {
     console.error(`   ❌ Error saving SwapADFForETH:`, err);
+  }
+}
+
+async function handleDeliveryConfirmed(event: any): Promise<void> {
+  const { auctionId } = event.args;
+
+  try {
+    // Set auction phase to RESOLVED in DB
+    await pool.query(
+      `UPDATE auctions SET phase = 'RESOLVED' WHERE auction_id = $1`,
+      [Number(auctionId)]
+    );
+
+    // Find seller to reward successful delivery
+    const result = await pool.query(
+      `SELECT seller FROM auctions WHERE auction_id = $1`,
+      [Number(auctionId)]
+    );
+
+    if (result.rows.length > 0) {
+      const seller = result.rows[0].seller;
+      await incrementUserStat(seller, 'successful_deliveries');
+    }
+
+    console.log(`   📦 DeliveryConfirmed for Auction #${auctionId}`);
+  } catch (err) {
+    console.error(`   ❌ Error saving DeliveryConfirmed #${auctionId}:`, err);
+  }
+}
+
+async function handleDisputeOpened(event: any): Promise<void> {
+  const { auctionId, initiator, evidenceIPFS } = event.args;
+
+  try {
+    // Set auction phase to DISPUTE_OPENED in DB
+    await pool.query(
+      `UPDATE auctions SET phase = 'DISPUTE_OPENED' WHERE auction_id = $1`,
+      [Number(auctionId)]
+    );
+
+    // Track dispute opened stat for initiator
+    await incrementUserStat(initiator, 'total_disputes_filed');
+
+    console.log(`   ⚖️ DisputeOpened for Auction #${auctionId} by ${initiator}`);
+  } catch (err) {
+    console.error(`   ❌ Error saving DisputeOpened #${auctionId}:`, err);
   }
 }
 
@@ -451,6 +550,30 @@ function watchEvents(): void {
     onLogs: (logs) => {
       for (const log of logs) {
         handleSwapADFForETH(log);
+        updateSyncBlock(log.blockNumber);
+      }
+    },
+  });
+
+  publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESSES.AuctionExchange,
+    abi: AUCTION_EXCHANGE_ABI,
+    eventName: 'DeliveryConfirmed',
+    onLogs: (logs) => {
+      for (const log of logs) {
+        handleDeliveryConfirmed(log);
+        updateSyncBlock(log.blockNumber);
+      }
+    },
+  });
+
+  publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESSES.AuctionExchange,
+    abi: AUCTION_EXCHANGE_ABI,
+    eventName: 'DisputeOpened',
+    onLogs: (logs) => {
+      for (const log of logs) {
+        handleDisputeOpened(log);
         updateSyncBlock(log.blockNumber);
       }
     },

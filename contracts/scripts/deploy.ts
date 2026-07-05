@@ -82,12 +82,59 @@ async function main() {
     JSON.stringify(addresses, null, 2)
   );
 
-  console.log("=========================================");
-  console.log("🎉 TRIỂN KHAI THÀNH CÔNG!");
+  console.log(`\n📄 Địa chỉ đã được ghi vào: contracts/abi/addresses.json`);
+
+  // ---- Tự động cập nhật các file .env ở server và site ----
+  console.log("\n⚙️ Automatically updating environment variables...");
+
+  function updateEnvFile(filePath: string, updates: Record<string, string>) {
+    if (!fs.existsSync(filePath)) {
+      console.log(`   ⚠️ File không tồn tại: ${filePath}`);
+      return;
+    }
+    let content = fs.readFileSync(filePath, "utf-8");
+    const lines = content.split(/\r?\n/);
+    
+    for (const [key, value] of Object.entries(updates)) {
+      let found = false;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim().startsWith(`${key}=`)) {
+          lines[i] = `${key}=${value}`;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        lines.push(`${key}=${value}`);
+      }
+    }
+    fs.writeFileSync(filePath, lines.join("\n"));
+    console.log(`   ✅ Cập nhật thành công: ${filePath}`);
+  }
+
+  // Cập nhật server .env
+  const serverEnvPath = path.resolve(import.meta.dirname, "..", "..", "server", ".env");
+  updateEnvFile(serverEnvPath, {
+    ADF_ADDRESS: adf.address,
+    ADF_POOL_ADDRESS: adfPool.address,
+    ADF_NFT_ADDRESS: adfNft.address,
+    AUCTION_EXCHANGE_ADDRESS: auctionExchange.address,
+  });
+
+  // Cập nhật site .env
+  const siteEnvPath = path.resolve(import.meta.dirname, "..", "..", "site", ".env");
+  updateEnvFile(siteEnvPath, {
+    VITE_ADF_ADDRESS: adf.address,
+    VITE_ADF_POOL_ADDRESS: adfPool.address,
+    VITE_ADF_NFT_ADDRESS: adfNft.address,
+    VITE_AUCTION_EXCHANGE_ADDRESS: auctionExchange.address,
+  });
+
+  console.log("\n=========================================");
+  console.log("🎉 TRIỂN KHAI VÀ ĐỒNG BỘ MÔI TRƯỜNG THÀNH CÔNG!");
   console.log("=========================================");
   console.log(JSON.stringify(addresses, null, 2));
-  console.log(`\n📄 Địa chỉ đã được ghi vào: contracts/abi/addresses.json`);
-  console.log("👉 Tiếp theo: chạy 'npx hardhat run scripts/export-abi.ts' để xuất ABI");
+  console.log("\n👉 Tiếp theo: chạy 'npx hardhat run scripts/export-abi.ts' để xuất ABI");
 }
 
 main().catch((error) => {
