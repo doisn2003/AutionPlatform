@@ -24,17 +24,37 @@ async function main() {
   console.log("=========================================\n");
 
   // ---- Bước 1: Deploy ADF (ERC20) ----
-  console.log("📦 [1/3] Deploying ADF Token (ERC20)...");
+  console.log("📦 [1/4] Deploying ADF Token (ERC20)...");
   const adf = await viem.deployContract("ADF");
   console.log(`   ✅ ADF deployed to: ${adf.address}\n`);
 
-  // ---- Bước 2: Deploy ADF_NFT (ERC721) ----
-  console.log("📦 [2/3] Deploying ADF_NFT (ERC721)...");
+  // ---- Bước 2: Deploy ADF_Pool (AMM) ----
+  console.log("📦 [2/4] Deploying ADF_Pool (AMM)...");
+  const adfPool = await viem.deployContract("ADF_Pool", [
+    adf.address,
+    deployer.account.address
+  ]);
+  console.log(`   ✅ ADF_Pool deployed to: ${adfPool.address}\n`);
+
+  // ---- Nạp thanh khoản ban đầu cho ADF_Pool ----
+  console.log("💧 Adding initial liquidity to ADF_Pool...");
+  const decimals = await adf.read.decimals();
+  const adfAmount = 1000000n * 10n ** BigInt(decimals); // 1,000,000 ADF
+  const ethAmount = 10n * 10n ** 18n; // 10 ETH
+  
+  // Approve ADF
+  await adf.write.approve([adfPool.address, adfAmount], { account: deployer.account });
+  // Add Liquidity
+  await adfPool.write.addLiquidity([adfAmount], { account: deployer.account, value: ethAmount });
+  console.log("   ✅ Initial liquidity added: 10 ETH + 1,000,000 ADF\n");
+
+  // ---- Bước 3: Deploy ADF_NFT (ERC721) ----
+  console.log("📦 [3/4] Deploying ADF_NFT (ERC721)...");
   const adfNft = await viem.deployContract("ADF_NFT", [deployer.account.address]);
   console.log(`   ✅ ADF_NFT deployed to: ${adfNft.address}\n`);
 
-  // ---- Bước 3: Deploy AuctionExchange ----
-  console.log("📦 [3/3] Deploying AuctionExchange...");
+  // ---- Bước 4: Deploy AuctionExchange ----
+  console.log("📦 [4/4] Deploying AuctionExchange...");
   const auctionExchange = await viem.deployContract("AuctionExchange", [
     adf.address,
     adfNft.address,
@@ -44,6 +64,7 @@ async function main() {
   // ---- Ghi địa chỉ ra file ----
   const addresses = {
     ADF: adf.address,
+    ADF_Pool: adfPool.address,
     ADF_NFT: adfNft.address,
     AuctionExchange: auctionExchange.address,
     deployer: deployer.account.address,

@@ -4,6 +4,7 @@ import auctionRoutes from './routes/auctionRoutes';
 import ipfsRoutes from './routes/ipfsRoutes';
 import nftRoutes from './routes/nftRoutes';
 import categoryRoutes from './routes/categoryRoutes';
+import swapRoutes from './routes/swapRoutes';
 
 const app: Application = express();
 
@@ -17,6 +18,7 @@ app.use('/api/auctions', auctionRoutes);
 app.use('/api/ipfs', ipfsRoutes);
 app.use('/api/nfts', nftRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/swap', swapRoutes);
 
 // Healthcheck Route
 app.get('/api/health', (req: Request, res: Response) => {

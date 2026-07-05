@@ -7,7 +7,7 @@
 
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseUnits, maxUint256 } from 'viem';
-import { ADF_ABI, ADF_NFT_ABI, AUCTION_EXCHANGE_ABI, CONTRACT_ADDRESSES } from '../config/contracts';
+import { ADF_ABI, ADF_NFT_ABI, AUCTION_EXCHANGE_ABI, CONTRACT_ADDRESSES, ADF_POOL_ABI } from '../config/contracts';
 
 // ---- ADF Token Actions ----
 
@@ -155,4 +155,41 @@ export function useWithdraw() {
   };
 
   return { withdraw, hash, isPending, isConfirming, isConfirmed, isSuccess, error };
+}
+
+// ---- ADF_Pool Actions ----
+
+/** Gọi ADF_Pool.swapETHForADF(minADFOut) */
+export function useSwapETHForADF() {
+  const { writeContract, data: hash, isPending, isSuccess, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+
+  const swapETHForADF = (minADFOut: bigint, value: bigint) => {
+    writeContract({
+      address: CONTRACT_ADDRESSES.ADF_Pool,
+      abi: ADF_POOL_ABI,
+      functionName: 'swapETHForADF',
+      args: [minADFOut],
+      value,
+    });
+  };
+
+  return { swapETHForADF, hash, isPending, isConfirming, isConfirmed, isSuccess, error };
+}
+
+/** Gọi ADF_Pool.swapADFForETH(adfAmount, minETHOut) */
+export function useSwapADFForETH() {
+  const { writeContract, data: hash, isPending, isSuccess, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+
+  const swapADFForETH = (adfAmount: bigint, minETHOut: bigint) => {
+    writeContract({
+      address: CONTRACT_ADDRESSES.ADF_Pool,
+      abi: ADF_POOL_ABI,
+      functionName: 'swapADFForETH',
+      args: [adfAmount, minETHOut],
+    });
+  };
+
+  return { swapADFForETH, hash, isPending, isConfirming, isConfirmed, isSuccess, error };
 }

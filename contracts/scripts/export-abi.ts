@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const CONTRACTS = ["ADF", "ADF_NFT", "AuctionExchange"];
+const CONTRACTS = ["ADF", "ADF_Pool", "ADF_NFT", "AuctionExchange"];
 
 async function main() {
   const artifactsDir = path.resolve(import.meta.dirname, "..", "artifacts", "contracts");

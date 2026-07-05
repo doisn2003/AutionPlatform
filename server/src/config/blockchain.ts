@@ -35,6 +35,7 @@ export const walletClient = DEPLOYER_PRIVATE_KEY
 // ---- Contract Addresses ----
 export const CONTRACT_ADDRESSES = {
   ADF: (process.env.ADF_ADDRESS || '0x') as Address,
+  ADF_Pool: (process.env.ADF_POOL_ADDRESS || '0x') as Address,
   ADF_NFT: (process.env.ADF_NFT_ADDRESS || '0x') as Address,
   AuctionExchange: (process.env.AUCTION_EXCHANGE_ADDRESS || '0x') as Address,
 };
@@ -130,4 +131,67 @@ export const ADF_NFT_ABI = [
     outputs: [{ name: '', type: 'string' }],
     stateMutability: 'view',
   }
+] as const;
+
+export const ADF_POOL_ABI = [
+  {
+    type: 'event',
+    name: 'SwapETHForADF',
+    inputs: [
+      { name: 'buyer', type: 'address', indexed: true },
+      { name: 'ethIn', type: 'uint256', indexed: false },
+      { name: 'adfOut', type: 'uint256', indexed: false },
+      { name: 'feeCollected', type: 'uint256', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'SwapADFForETH',
+    inputs: [
+      { name: 'seller', type: 'address', indexed: true },
+      { name: 'adfIn', type: 'uint256', indexed: false },
+      { name: 'ethOut', type: 'uint256', indexed: false },
+      { name: 'feeCollected', type: 'uint256', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'LiquidityAdded',
+    inputs: [
+      { name: 'provider', type: 'address', indexed: true },
+      { name: 'ethAmount', type: 'uint256', indexed: false },
+      { name: 'adfAmount', type: 'uint256', indexed: false },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'reserveETH',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'reserveADF',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getPrice',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getAmountOut',
+    inputs: [
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'isETHForADF', type: 'bool' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
 ] as const;

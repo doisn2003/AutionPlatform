@@ -6,7 +6,7 @@
  */
 
 import { type Log } from 'viem';
-import { publicClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI, ADF_NFT_ABI } from '../config/blockchain';
+import { publicClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI, ADF_NFT_ABI, ADF_POOL_ABI } from '../config/blockchain';
 import pool from '../config/db';
 
 // ---- Catchup: Đọc event cũ từ block đã lưu ----
@@ -90,10 +90,36 @@ async function catchupEvents(): Promise<void> {
     await handleAuctionCanceled(event as any);
   }
 
+  // SwapETHForADF events
+  const swapEthEvents = await publicClient.getContractEvents({
+    address: CONTRACT_ADDRESSES.ADF_Pool,
+    abi: ADF_POOL_ABI,
+    eventName: 'SwapETHForADF',
+    fromBlock: fromBlock + 1n,
+    toBlock: currentBlock,
+  });
+
+  for (const event of swapEthEvents) {
+    await handleSwapETHForADF(event as any);
+  }
+
+  // SwapADFForETH events
+  const swapAdfEvents = await publicClient.getContractEvents({
+    address: CONTRACT_ADDRESSES.ADF_Pool,
+    abi: ADF_POOL_ABI,
+    eventName: 'SwapADFForETH',
+    fromBlock: fromBlock + 1n,
+    toBlock: currentBlock,
+  });
+
+  for (const event of swapAdfEvents) {
+    await handleSwapADFForETH(event as any);
+  }
+
   // Cập nhật sync state
   await pool.query('UPDATE sync_state SET last_synced_block = $1, updated_at = NOW() WHERE id = 1', [currentBlock.toString()]);
 
-  console.log(`   ✅ Catchup done. Processed: ${createdEvents.length} created, ${bidEvents.length} bids, ${endedEvents.length} ended, ${canceledEvents.length} canceled`);
+  console.log(`   ✅ Catchup done. Processed: ${createdEvents.length} created, ${bidEvents.length} bids, ${endedEvents.length} ended, ${canceledEvents.length} canceled, ${swapEthEvents.length + swapAdfEvents.length} swaps`);
 }
 
 // ---- Event Handlers ----
@@ -294,6 +320,54 @@ async function handleNFTMinted(event: any): Promise<void> {
   }
 }
 
+async function handleSwapETHForADF(event: any): Promise<void> {
+  const { buyer, ethIn, adfOut, feeCollected } = event.args;
+  const txHash = event.transactionHash;
+
+  try {
+    await pool.query(
+      `INSERT INTO swap_history (tx_hash, user_address, swap_type, amount_in, amount_out, fee_collected)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (tx_hash) DO NOTHING`,
+      [
+        txHash,
+        buyer.toLowerCase(),
+        'ETH_TO_ADF',
+        ethIn.toString(),
+        adfOut.toString(),
+        feeCollected.toString()
+      ]
+    );
+    console.log(`   💱 SwapETHForADF: ${buyer} swapped ${Number(ethIn)/1e18} ETH for ${Number(adfOut)/1e18} ADF`);
+  } catch (err) {
+    console.error(`   ❌ Error saving SwapETHForADF:`, err);
+  }
+}
+
+async function handleSwapADFForETH(event: any): Promise<void> {
+  const { seller, adfIn, ethOut, feeCollected } = event.args;
+  const txHash = event.transactionHash;
+
+  try {
+    await pool.query(
+      `INSERT INTO swap_history (tx_hash, user_address, swap_type, amount_in, amount_out, fee_collected)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (tx_hash) DO NOTHING`,
+      [
+        txHash,
+        seller.toLowerCase(),
+        'ADF_TO_ETH',
+        adfIn.toString(),
+        ethOut.toString(),
+        feeCollected.toString()
+      ]
+    );
+    console.log(`   💱 SwapADFForETH: ${seller} swapped ${Number(adfIn)/1e18} ADF for ${Number(ethOut)/1e18} ETH`);
+  } catch (err) {
+    console.error(`   ❌ Error saving SwapADFForETH:`, err);
+  }
+}
+
 // ---- Watch: Lắng nghe event realtime ----
 function watchEvents(): void {
   console.log('👁️  Watching for new blockchain events...');
@@ -353,6 +427,30 @@ function watchEvents(): void {
     onLogs: (logs) => {
       for (const log of logs) {
         handleAuctionCanceled(log);
+        updateSyncBlock(log.blockNumber);
+      }
+    },
+  });
+
+  publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESSES.ADF_Pool,
+    abi: ADF_POOL_ABI,
+    eventName: 'SwapETHForADF',
+    onLogs: (logs) => {
+      for (const log of logs) {
+        handleSwapETHForADF(log);
+        updateSyncBlock(log.blockNumber);
+      }
+    },
+  });
+
+  publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESSES.ADF_Pool,
+    abi: ADF_POOL_ABI,
+    eventName: 'SwapADFForETH',
+    onLogs: (logs) => {
+      for (const log of logs) {
+        handleSwapADFForETH(log);
         updateSyncBlock(log.blockNumber);
       }
     },
