@@ -23,6 +23,10 @@ export interface AuctionFromAPI {
   name?: string;
   image?: string;
   description?: string;
+  category_name?: string;
+  category_icon?: string;
+  category_code?: string;
+  asset_type?: string;
 }
 
 interface AuctionAPIResponse {

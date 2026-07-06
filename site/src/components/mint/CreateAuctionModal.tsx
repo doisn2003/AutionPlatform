@@ -99,13 +99,52 @@ const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, o
   useEffect(() => {
     if (isCreateConfirmed) {
       setStep('success');
-      // Trigger success callback after 1.5 seconds to auto-close or allow manual close
+      
+      // Đồng bộ category_code lên off-chain database (có cơ chế tự động thử lại đề phòng delay đồng bộ on-chain)
+      if (selectedCategory) {
+        const syncCategory = (retriesLeft = 6) => {
+          fetch(`${API_URL}/api/auctions/by-nft/${nft.token_id}/category`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ category_code: selectedCategory.category_code }),
+          })
+            .then((res) => {
+              if (!res.ok) {
+                if (retriesLeft > 0) {
+                  console.log(`[Sync] Phiên đấu giá chưa được lưu vào DB. Thử lại sau 1.5s... (Còn ${retriesLeft} lần thử)`);
+                  setTimeout(() => syncCategory(retriesLeft - 1), 1500);
+                } else {
+                  console.error('[Sync] Quá số lần thử lại, không thể đồng bộ danh mục.');
+                }
+                return null;
+              }
+              return res.json();
+            })
+            .then((data) => {
+              if (data) console.log('[Sync] Đồng bộ danh mục thành công:', data);
+            })
+            .catch((err) => {
+              if (retriesLeft > 0) {
+                setTimeout(() => syncCategory(retriesLeft - 1), 1500);
+              } else {
+                console.error('[Sync] Lỗi đồng bộ danh mục:', err);
+              }
+            });
+        };
+
+        // Kích hoạt đồng bộ lần đầu tiên
+        syncCategory();
+      }
+
+      // Trigger success callback after 2 seconds to auto-close or allow manual close
       const timer = setTimeout(() => {
         onSuccess();
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [isCreateConfirmed]);
+  }, [isCreateConfirmed, selectedCategory, nft.token_id, onSuccess]);
 
   // Handle errors
   useEffect(() => {

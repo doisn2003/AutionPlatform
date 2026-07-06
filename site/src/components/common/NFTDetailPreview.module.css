@@ -1,0 +1,268 @@
+.reviewContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.reviewImageContainer {
+  width: 90%;
+  margin: 0 auto;
+  aspect-ratio: 1.5;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 10, 11, 0.5);
+  position: relative;
+}
+
+.reviewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reviewDetailsScroll {
+  flex-grow: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+}
+
+.reviewDetailsScroll::-webkit-scrollbar {
+  width: 3px;
+}
+
+.reviewDetailsScroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.reviewMetaHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reviewTitleText {
+  font-family: 'Anybody', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 300;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+.reviewOwner {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.reviewDescText {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.attributesHeader {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.reviewAttributes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.attributeBadge {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  padding: 4px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.attrLabel {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.attrVal {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Carousel Controls inside Preview Card */
+.arrowButton {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(10, 10, 11, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+
+.arrowButton:hover {
+  background: var(--color-primary);
+  color: #3c2f00; /* onPrimary */
+  border-color: var(--color-primary);
+  box-shadow: 0 0 12px rgba(242, 202, 80, 0.4);
+}
+
+.arrowLeft {
+  left: 10px;
+}
+
+.arrowRight {
+  right: 10px;
+}
+
+.imageIndexBadge {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 10, 11, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  z-index: 10;
+  letter-spacing: 0.05em;
+  backdrop-filter: blur(4px);
+}
+
+/* Fullscreen Lightbox */
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 11, 0.95);
+  backdrop-filter: blur(15px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  cursor: zoom-out;
+}
+
+.lightboxImage {
+  max-width: 90%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8);
+  user-select: none;
+}
+
+.lightboxClose {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  z-index: 100000;
+}
+
+.lightboxClose:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  transform: rotate(90deg);
+}
+
+.lightboxArrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  z-index: 100000;
+  backdrop-filter: blur(8px);
+}
+
+.lightboxArrow:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #3c2f00;
+  box-shadow: 0 0 20px rgba(242, 202, 80, 0.3);
+}
+
+.lightboxArrowLeft {
+  left: 40px;
+}
+
+.lightboxArrowRight {
+  right: 40px;
+}
+
+.lightboxIndexBadge {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  z-index: 100000;
+}
+
+@media (max-width: 768px) {
+  .lightboxArrowLeft {
+    left: 10px;
+  }
+  .lightboxArrowRight {
+    right: 10px;
+  }
+  .lightboxImage {
+    max-width: 95%;
+  }
+}

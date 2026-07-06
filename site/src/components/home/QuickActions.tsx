@@ -1,14 +1,13 @@
 /**
- * QuickActions — Panel thao tác nhanh (Faucet, Balance, Withdraw)
- * Chỉ hiển thị khi ví đã kết nối
+ * QuickActions — Tích hợp Floating Wallet Widget thay vì panel tĩnh.
+ * Chỉ hiển thị khi ví đã kết nối.
  */
 
 import React from 'react';
 import { useAccount } from 'wagmi';
-import { formatUnits } from 'viem';
 import { useFaucet, useWithdraw } from '../../hooks/useContractActions';
 import { useADFBalance, usePendingReturns } from '../../hooks/useReadContract';
-import styles from './QuickActions.module.css';
+import FloatingWalletWidget from '../layout/FloatingWalletWidget/FloatingWalletWidget';
 
 const QuickActions: React.FC = () => {
   const { address, isConnected } = useAccount();
@@ -17,12 +16,6 @@ const QuickActions: React.FC = () => {
   const { faucet, isPending: isFauceting, isConfirming: isFaucetConfirming, isConfirmed: isFaucetConfirmed } = useFaucet();
   const { withdraw, isPending: isWithdrawing, isConfirming: isWithdrawConfirming } = useWithdraw();
 
-  if (!isConnected) return null;
-
-  const formattedBalance = balance !== undefined ? parseFloat(formatUnits(balance, 18)).toFixed(2) : '...';
-  const formattedPending = pending !== undefined ? parseFloat(formatUnits(pending, 18)).toFixed(2) : '...';
-  const hasPending = pending !== undefined && pending > 0n;
-
   // Refetch sau khi faucet thành công
   React.useEffect(() => {
     if (isFaucetConfirmed) {
@@ -30,48 +23,18 @@ const QuickActions: React.FC = () => {
     }
   }, [isFaucetConfirmed, refetchBalance]);
 
+  if (!isConnected) return null;
+
   return (
-    <section className={styles.quickActions}>
-      {/* Số dư ADF */}
-      <div className={`glass-panel ${styles.card}`}>
-        <div className={styles.cardIcon}>
-          <span className="material-symbols-outlined text-gold">account_balance</span>
-        </div>
-        <div className={styles.cardContent}>
-          <span className={styles.cardLabel}>Số dư ADF</span>
-          <span className={`text-gold font-mono ${styles.cardValue}`}>{formattedBalance}</span>
-        </div>
-      </div>
-
-      {/* Faucet */}
-      
-
-      {/* Tiền chờ rút */}
-      <div className={`glass-panel ${styles.card}`}>
-        <div className={styles.cardIcon}>
-          <span className="material-symbols-outlined" style={{ color: hasPending ? '#10b981' : 'var(--text-muted)' }}>
-            savings
-          </span>
-        </div>
-        <div className={styles.cardContent}>
-          <span className={styles.cardLabel}>Tiền chờ rút</span>
-          <div className={styles.pendingRow}>
-            <span className={`font-mono ${styles.cardValue}`} style={{ color: hasPending ? '#10b981' : 'var(--text-muted)' }}>
-              {formattedPending} ADF
-            </span>
-            {hasPending && (
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => withdraw()}
-                disabled={isWithdrawing || isWithdrawConfirming}
-              >
-                {isWithdrawing ? 'Đang gửi...' : isWithdrawConfirming ? 'Xác nhận...' : 'Rút'}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </section>
+    <FloatingWalletWidget
+      balance={balance !== undefined ? balance : 0n}
+      pendingReturns={pending !== undefined ? pending : 0n}
+      onWithdraw={() => withdraw()}
+      isWithdrawing={isWithdrawing}
+      isWithdrawConfirming={isWithdrawConfirming}
+      onDeposit={() => faucet()}
+      isDepositing={isFauceting || isFaucetConfirming}
+    />
   );
 };
 

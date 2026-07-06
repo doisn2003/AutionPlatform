@@ -1,5 +1,4 @@
-import React from 'react';
-import { icons } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 
 export interface AssetCategory {
   id: number;
@@ -22,7 +21,7 @@ const toPascalCase = (str: string) =>
 
 const DynamicIcon = ({ name, size = 20, className = '' }: { name: string; size?: number; className?: string }) => {
   const iconName = toPascalCase(name);
-  const Icon = (icons as any)[iconName];
+  const Icon = (LucideIcons as any)[iconName];
   if (!Icon) return null;
   return <Icon size={size} className={className} />;
 };

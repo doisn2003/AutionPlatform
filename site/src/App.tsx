@@ -2,8 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Mint from './pages/Mint';
-import Exchange from './pages/Exchange';
-import Swap from './pages/Swap';
+import Transaction from './pages/Transaction';
 import Profile from './pages/Profile';
 import Reputation from './pages/Reputation';
 import MockHome from './pages/mock/MockHome';
@@ -18,8 +17,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/mint" element={<Mint />} />
-        <Route path="/exchange" element={<Exchange />} />
-        <Route path="/swap" element={<Swap />} />
+        <Route path="/transaction" element={<Transaction />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/reputation" element={<Reputation />} />
         

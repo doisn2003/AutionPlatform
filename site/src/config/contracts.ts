@@ -110,6 +110,13 @@ export const ADF_NFT_ABI = [
       { name: 'tokenId', type: 'uint256', indexed: true },
     ],
   },
+  {
+    type: 'function',
+    name: 'burn',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
 ] as const;
 
 // ---- AuctionExchange ABI ----

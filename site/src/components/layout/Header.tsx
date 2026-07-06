@@ -40,8 +40,7 @@ const Header: React.FC = () => {
   const navLinks = [
     { name: 'Trang chủ', path: '/' },
     { name: 'Đúc vật phẩm', path: '/mint' },
-    { name: 'Giao dịch', path: '/exchange' },
-    { name: 'Quy đổi (AMM)', path: '/swap' },
+    { name: 'Giao dịch', path: '/transaction' },
     { name: 'Bảng xếp hạng uy tín', path: '/reputation' },
   ];
 
@@ -50,7 +49,7 @@ const Header: React.FC = () => {
       <div className={`container ${styles.headerContainer}`}>
         {/* Brand Logo */}
         <Link to="/" className={styles.logo}>
-          <span className="material-symbols-outlined text-gold">diamond</span>
+          <img src="/ADF_logo.png" alt="ADF Logo" className={styles.logoImg} />
           <span className={styles.logoText}>ADF<span>.</span></span>
         </Link>
 

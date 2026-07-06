@@ -31,10 +31,15 @@ export default defineConfig({
     hardhatMainnet: {
       type: "edr-simulated",
       chainType: "l1",
+      // Giữ base fee = 0 để tránh phí gas leo thang khi dùng lâu
+      initialBaseFeePerGas: 0,
+      gasPrice: 0,
     },
     hardhatOp: {
       type: "edr-simulated",
       chainType: "op",
+      initialBaseFeePerGas: 0,
+      gasPrice: 0,
     },
     sepolia: {
       type: "http",

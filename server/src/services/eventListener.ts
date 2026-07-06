@@ -6,7 +6,7 @@
  */
 
 import { type Log } from 'viem';
-import { publicClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI, ADF_NFT_ABI, ADF_POOL_ABI, DISPUTE_RESOLUTION_ABI } from '../config/blockchain';
+import { publicClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI, ADF_NFT_ABI, ADF_POOL_ABI, DISPUTE_RESOLUTION_ABI, ADF_ABI } from '../config/blockchain';
 import pool from '../config/db';
 import { incrementUserStat, recalculateReputation } from './reputationService';
 import { assignJurorsAutomatically } from './oracleService';
@@ -266,6 +266,79 @@ async function catchupEvents(): Promise<void> {
     for (const event of jurorPenalizedEvents) {
       await handleJurorPenalized(event as any);
     }
+    // Withdraw events
+    const withdrawEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.AuctionExchange,
+      abi: AUCTION_EXCHANGE_ABI,
+      eventName: 'Withdraw',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of withdrawEvents) {
+      await handleWithdraw(event as any);
+    }
+
+    // SellerDeposited events
+    const sellerDepositedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.AuctionExchange,
+      abi: AUCTION_EXCHANGE_ABI,
+      eventName: 'SellerDeposited',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of sellerDepositedEvents) {
+      await handleSellerDeposited(event as any);
+    }
+
+    // BuyerDeposited events
+    const buyerDepositedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.AuctionExchange,
+      abi: AUCTION_EXCHANGE_ABI,
+      eventName: 'BuyerDeposited',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of buyerDepositedEvents) {
+      await handleBuyerDeposited(event as any);
+    }
+
+    // EscrowReleased events
+    const escrowReleasedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.AuctionExchange,
+      abi: AUCTION_EXCHANGE_ABI,
+      eventName: 'EscrowReleased',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of escrowReleasedEvents) {
+      await handleEscrowReleased(event as any);
+    }
+
+    // DepositsBurned events
+    const depositsBurnedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.AuctionExchange,
+      abi: AUCTION_EXCHANGE_ABI,
+      eventName: 'DepositsBurned',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of depositsBurnedEvents) {
+      await handleDepositsBurned(event as any);
+    }
+
+    // Transfer events (ERC20)
+    if (CONTRACT_ADDRESSES.ADF && CONTRACT_ADDRESSES.ADF !== '0x') {
+      const transferEvents = await publicClient.getContractEvents({
+        address: CONTRACT_ADDRESSES.ADF,
+        abi: ADF_ABI,
+        eventName: 'Transfer',
+        fromBlock: fromBlock + 1n,
+        toBlock: currentBlock,
+      });
+      for (const event of transferEvents) {
+        await handleTransfer(event as any);
+      }
+    }
   }
 
   // Cập nhật sync state
@@ -384,6 +457,7 @@ async function handleBidPlaced(event: any): Promise<void> {
 
     // Update user stats
     await incrementUserStat(bidder, 'total_bids_placed');
+    await logUserTransaction(txHash, bidder, 'AUCTION_BID', amount, false);
 
     console.log(`   💰 BidPlaced #${auctionId} by ${bidder} — ${amount.toString()} wei`);
   } catch (err) {
@@ -507,9 +581,9 @@ async function handleNFTMinted(event: any): Promise<void> {
     } catch(e) { console.error('Error fetching metadata', e) }
 
     await pool.query(
-      `INSERT INTO nfts (token_id, owner, token_uri, name, description, image, attributes, tx_hash, block_number)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (token_id) DO UPDATE SET owner = $2`,
+      `INSERT INTO nfts (token_id, owner, token_uri, name, description, image, images, attributes, tx_hash, block_number)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (token_id) DO UPDATE SET owner = $2, images = $7`,
       [
         Number(tokenId),
         owner.toLowerCase(),
@@ -517,6 +591,7 @@ async function handleNFTMinted(event: any): Promise<void> {
         metadataJSON.name || '',
         metadataJSON.description || '',
         metadataJSON.image || '',
+        metadataJSON.images ? JSON.stringify(metadataJSON.images) : null,
         metadataJSON.attributes ? JSON.stringify(metadataJSON.attributes) : null,
         txHash,
         Number(blockNumber),
@@ -550,6 +625,7 @@ async function handleSwapETHForADF(event: any): Promise<void> {
         feeCollected.toString()
       ]
     );
+    await logUserTransaction(txHash, buyer, 'SWAP_ETH_TO_ADF', adfOut, true);
     console.log(`   💱 SwapETHForADF: ${buyer} swapped ${Number(ethIn)/1e18} ETH for ${Number(adfOut)/1e18} ADF`);
   } catch (err) {
     console.error(`   ❌ Error saving SwapETHForADF:`, err);
@@ -574,6 +650,7 @@ async function handleSwapADFForETH(event: any): Promise<void> {
         feeCollected.toString()
       ]
     );
+    await logUserTransaction(txHash, seller, 'SWAP_ADF_TO_ETH', adfIn, false);
     console.log(`   💱 SwapADFForETH: ${seller} swapped ${Number(adfIn)/1e18} ADF for ${Number(ethOut)/1e18} ETH`);
   } catch (err) {
     console.error(`   ❌ Error saving SwapADFForETH:`, err);
@@ -910,6 +987,7 @@ async function handleDisputeResolved(event: any): Promise<void> {
 
 async function handleJurorStaked(event: any): Promise<void> {
   const { juror, amount } = event.args;
+  const txHash = event.transactionHash;
 
   try {
     const jurorAddress = juror.toLowerCase();
@@ -919,6 +997,7 @@ async function handleJurorStaked(event: any): Promise<void> {
        WHERE wallet_address = $2`,
       [amount.toString(), jurorAddress]
     );
+    await logUserTransaction(txHash, juror, 'JUROR_STAKE', amount, false);
     await recalculateReputation(jurorAddress);
     console.log(`   🛡️ JurorStaked synced: ${jurorAddress} staked +${Number(amount)/1e18} ADF`);
   } catch (err) {
@@ -928,6 +1007,7 @@ async function handleJurorStaked(event: any): Promise<void> {
 
 async function handleJurorUnstaked(event: any): Promise<void> {
   const { juror, amount } = event.args;
+  const txHash = event.transactionHash;
 
   try {
     const jurorAddress = juror.toLowerCase();
@@ -937,6 +1017,7 @@ async function handleJurorUnstaked(event: any): Promise<void> {
        WHERE wallet_address = $2`,
       [amount.toString(), jurorAddress]
     );
+    await logUserTransaction(txHash, juror, 'JUROR_UNSTAKE', amount, true);
     await recalculateReputation(jurorAddress);
     console.log(`   🛡️ JurorUnstaked synced: ${jurorAddress} unstaked -${Number(amount)/1e18} ADF`);
   } catch (err) {
@@ -946,6 +1027,7 @@ async function handleJurorUnstaked(event: any): Promise<void> {
 
 async function handleJurorRewarded(event: any): Promise<void> {
   const { juror, amount } = event.args;
+  const txHash = event.transactionHash;
 
   try {
     const jurorAddress = juror.toLowerCase();
@@ -970,6 +1052,7 @@ async function handleJurorRewarded(event: any): Promise<void> {
       [amount.toString(), jurorAddress]
     );
 
+    await logUserTransaction(txHash, juror, 'JUROR_REWARD', amount, true);
     await recalculateReputation(jurorAddress);
     console.log(`   🎁 JurorRewarded synced: ${jurorAddress} rewarded +${Number(amount)/1e18} ADF`);
   } catch (err) {
@@ -979,6 +1062,7 @@ async function handleJurorRewarded(event: any): Promise<void> {
 
 async function handleJurorPenalized(event: any): Promise<void> {
   const { juror, amount } = event.args;
+  const txHash = event.transactionHash;
 
   try {
     const jurorAddress = juror.toLowerCase();
@@ -986,7 +1070,7 @@ async function handleJurorPenalized(event: any): Promise<void> {
     // 1. Cập nhật số dư stake trong profile
     await pool.query(
       `UPDATE user_profiles 
-       SET adf_staked_for_juror = GREATEST(0, adf_staked_for_juror - $1), updated_at = NOW() 
+       SET adf_staked_for_juror = adf_staked_for_juror - $1, updated_at = NOW() 
        WHERE wallet_address = $2`,
       [amount.toString(), jurorAddress]
     );
@@ -1003,11 +1087,108 @@ async function handleJurorPenalized(event: any): Promise<void> {
       [amount.toString(), jurorAddress]
     );
 
+    await logUserTransaction(txHash, juror, 'JUROR_PENALTY', amount, false);
     await recalculateReputation(jurorAddress);
     console.log(`   🔨 JurorPenalized synced: ${jurorAddress} penalized -${Number(amount)/1e18} ADF`);
   } catch (err) {
     console.error(`   ❌ Error saving JurorPenalized:`, err);
   }
+}
+
+// ---- Sổ cái Giao dịch & Biến động Số dư ----
+
+async function logUserTransaction(
+  txHash: string,
+  userAddress: string,
+  txType: string,
+  amountRaw: bigint,
+  isPositive: boolean
+): Promise<void> {
+  try {
+    const amountDec = Number(amountRaw) / 1e18;
+    const balanceChange = `${isPositive ? '+' : '-'}${amountDec.toFixed(2)} ADF`;
+    
+    await pool.query(
+      `INSERT INTO user_transactions (tx_hash, user_address, tx_type, amount, balance_change)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (tx_hash, user_address, tx_type) DO NOTHING`,
+      [txHash.toLowerCase(), userAddress.toLowerCase(), txType, amountDec, balanceChange]
+    );
+  } catch (err) {
+    console.error('   ❌ Error logging user transaction:', err);
+  }
+}
+
+async function handleWithdraw(event: any): Promise<void> {
+  const { user, amount } = event.args;
+  const txHash = event.transactionHash;
+  await logUserTransaction(txHash, user, 'WITHDRAW', amount, true);
+  console.log(`   💸 Withdraw synced: ${user} withdrew +${Number(amount)/1e18} ADF`);
+}
+
+async function handleSellerDeposited(event: any): Promise<void> {
+  const { auctionId, amount } = event.args;
+  const txHash = event.transactionHash;
+  const res = await pool.query('SELECT seller FROM auctions WHERE auction_id = $1', [Number(auctionId)]);
+  if (res.rows.length > 0) {
+    const seller = res.rows[0].seller;
+    await logUserTransaction(txHash, seller, 'SELLER_DEPOSIT', amount, false);
+  }
+}
+
+async function handleBuyerDeposited(event: any): Promise<void> {
+  const { auctionId, amount } = event.args;
+  const txHash = event.transactionHash;
+  const res = await pool.query('SELECT current_top_bidder FROM auctions WHERE auction_id = $1', [Number(auctionId)]);
+  if (res.rows.length > 0) {
+    const buyer = res.rows[0].current_top_bidder;
+    await logUserTransaction(txHash, buyer, 'BUYER_DEPOSIT', amount, false);
+  }
+}
+
+async function handleEscrowReleased(event: any): Promise<void> {
+  const { auctionId, receiver, amount } = event.args;
+  const txHash = event.transactionHash;
+  await logUserTransaction(txHash, receiver, 'ESCROW_RELEASE', amount, true);
+  console.log(`   💸 EscrowReleased synced: ${receiver} received +${Number(amount)/1e18} ADF`);
+}
+
+async function handleDepositsBurned(event: any): Promise<void> {
+  const { auctionId, buyerAmount, sellerAmount } = event.args;
+  const txHash = event.transactionHash;
+  const res = await pool.query('SELECT seller, current_top_bidder FROM auctions WHERE auction_id = $1', [Number(auctionId)]);
+  if (res.rows.length > 0) {
+    const { seller, current_top_bidder } = res.rows[0];
+    if (buyerAmount > 0n) {
+      await logUserTransaction(txHash, current_top_bidder, 'DEPOSIT_BURN', buyerAmount, false);
+    }
+    if (sellerAmount > 0n) {
+      await logUserTransaction(txHash, seller, 'DEPOSIT_BURN', sellerAmount, false);
+    }
+  }
+}
+
+async function handleTransfer(event: any): Promise<void> {
+  const { from, to, value } = event.args;
+  const txHash = event.transactionHash;
+  
+  const fromAddr = from.toLowerCase();
+  const toAddr = to.toLowerCase();
+  const adfPoolAddr = CONTRACT_ADDRESSES.ADF_Pool.toLowerCase();
+  const exchangeAddr = CONTRACT_ADDRESSES.AuctionExchange.toLowerCase();
+  const nullAddr = '0x0000000000000000000000000000000000000000';
+  
+  if (fromAddr === adfPoolAddr || fromAddr === exchangeAddr || toAddr === adfPoolAddr || toAddr === exchangeAddr) {
+    return; // Ignore contract interactions (already captured by other events)
+  }
+  
+  if (fromAddr !== nullAddr) {
+    await logUserTransaction(txHash, from, 'TRANSFER_SEND', value, false);
+  }
+  if (toAddr !== nullAddr) {
+    await logUserTransaction(txHash, to, 'TRANSFER_RECEIVE', value, true);
+  }
+  console.log(`   💸 Transfer synced: P2P transfer ${Number(value)/1e18} ADF from ${fromAddr} to ${toAddr}`);
 }
 
 // ---- Watch: Lắng nghe event realtime ----
@@ -1239,6 +1420,82 @@ function watchEvents(): void {
       onLogs: (logs) => {
         for (const log of logs) {
           handleJurorPenalized(log);
+          updateSyncBlock(log.blockNumber);
+        }
+      },
+    });
+  }
+
+  // --- ADDITIONAL AUCTION EXCHANGE WATCHERS ---
+  publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESSES.AuctionExchange,
+    abi: AUCTION_EXCHANGE_ABI,
+    eventName: 'Withdraw',
+    onLogs: (logs) => {
+      for (const log of logs) {
+        handleWithdraw(log);
+        updateSyncBlock(log.blockNumber);
+      }
+    },
+  });
+
+  publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESSES.AuctionExchange,
+    abi: AUCTION_EXCHANGE_ABI,
+    eventName: 'SellerDeposited',
+    onLogs: (logs) => {
+      for (const log of logs) {
+        handleSellerDeposited(log);
+        updateSyncBlock(log.blockNumber);
+      }
+    },
+  });
+
+  publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESSES.AuctionExchange,
+    abi: AUCTION_EXCHANGE_ABI,
+    eventName: 'BuyerDeposited',
+    onLogs: (logs) => {
+      for (const log of logs) {
+        handleBuyerDeposited(log);
+        updateSyncBlock(log.blockNumber);
+      }
+    },
+  });
+
+  publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESSES.AuctionExchange,
+    abi: AUCTION_EXCHANGE_ABI,
+    eventName: 'EscrowReleased',
+    onLogs: (logs) => {
+      for (const log of logs) {
+        handleEscrowReleased(log);
+        updateSyncBlock(log.blockNumber);
+      }
+    },
+  });
+
+  publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESSES.AuctionExchange,
+    abi: AUCTION_EXCHANGE_ABI,
+    eventName: 'DepositsBurned',
+    onLogs: (logs) => {
+      for (const log of logs) {
+        handleDepositsBurned(log);
+        updateSyncBlock(log.blockNumber);
+      }
+    },
+  });
+
+  // --- ADF TOKEN (ERC20) TRANSFER WATCHER ---
+  if (CONTRACT_ADDRESSES.ADF && CONTRACT_ADDRESSES.ADF !== '0x') {
+    publicClient.watchContractEvent({
+      address: CONTRACT_ADDRESSES.ADF,
+      abi: ADF_ABI,
+      eventName: 'Transfer',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          handleTransfer(log);
           updateSyncBlock(log.blockNumber);
         }
       },

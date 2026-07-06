@@ -112,6 +112,48 @@ export const AUCTION_EXCHANGE_ABI = [
       { name: 'evidenceIPFS', type: 'string', indexed: false },
     ],
   },
+  {
+    type: 'event',
+    name: 'Withdraw',
+    inputs: [
+      { name: 'user', type: 'address', indexed: true },
+      { name: 'amount', type: 'uint256', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'SellerDeposited',
+    inputs: [
+      { name: 'auctionId', type: 'uint256', indexed: true },
+      { name: 'amount', type: 'uint256', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'BuyerDeposited',
+    inputs: [
+      { name: 'auctionId', type: 'uint256', indexed: true },
+      { name: 'amount', type: 'uint256', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'EscrowReleased',
+    inputs: [
+      { name: 'auctionId', type: 'uint256', indexed: true },
+      { name: 'receiver', type: 'address', indexed: true },
+      { name: 'amount', type: 'uint256', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DepositsBurned',
+    inputs: [
+      { name: 'auctionId', type: 'uint256', indexed: true },
+      { name: 'buyerAmount', type: 'uint256', indexed: false },
+      { name: 'sellerAmount', type: 'uint256', indexed: false },
+    ],
+  },
   // Functions
   {
     type: 'function',
@@ -335,5 +377,17 @@ export const DISPUTE_RESOLUTION_ABI = [
     ],
     outputs: [],
     stateMutability: 'nonpayable',
+  },
+] as const;
+
+export const ADF_ABI = [
+  {
+    type: 'event',
+    name: 'Transfer',
+    inputs: [
+      { name: 'from', type: 'address', indexed: true },
+      { name: 'to', type: 'address', indexed: true },
+      { name: 'value', type: 'uint256', indexed: false },
+    ],
   },
 ] as const;

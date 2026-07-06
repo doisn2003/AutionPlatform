@@ -7,6 +7,7 @@ import categoryRoutes from './routes/categoryRoutes';
 import swapRoutes from './routes/swapRoutes';
 import profileRoutes from './routes/profileRoutes';
 import disputeRoutes from './routes/disputeRoutes';
+import transactionRoutes from './routes/transactionRoutes';
 
 const app: Application = express();
 
@@ -23,6 +24,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/swap', swapRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/disputes', disputeRoutes);
+app.use('/api/transaction', transactionRoutes);
 
 // Healthcheck Route
 app.get('/api/health', (req: Request, res: Response) => {

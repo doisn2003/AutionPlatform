@@ -34,6 +34,28 @@ export const uploadToIPFS = async (req: Request, res: Response) => {
       });
 
       imageURIs.push(`ipfs://${fileRes.data.IpfsHash}`);
+
+      // 1b. Cache Image in Supabase Storage
+      try {
+        const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+        if (SUPABASE_ANON_KEY) {
+          const fileBuffer = fs.readFileSync(file.path);
+          const filename = `${fileRes.data.IpfsHash}.png`;
+          const supabaseUrl = `https://xoddvzoyvzkrhjcjwsfw.supabase.co/storage/v1/object/nft-images/${filename}`;
+          
+          await axios.post(supabaseUrl, fileBuffer, {
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'apiKey': SUPABASE_ANON_KEY,
+              'Content-Type': file.mimetype || 'image/png'
+            }
+          });
+          console.log(`Successfully cached image to Supabase Storage: ${filename}`);
+        }
+      } catch (err: any) {
+        console.error('Failed to cache image to Supabase Storage:', err.response?.data || err.message);
+      }
+
       fs.unlinkSync(file.path); // Clean up local file immediately
     }
 
@@ -63,7 +85,25 @@ export const uploadToIPFS = async (req: Request, res: Response) => {
       },
     });
 
-
+    // 2b. Cache Metadata JSON in Supabase Storage
+    try {
+      const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+      if (SUPABASE_ANON_KEY) {
+        const metadataHash = jsonRes.data.IpfsHash;
+        const supabaseUrl = `https://xoddvzoyvzkrhjcjwsfw.supabase.co/storage/v1/object/nft-metadata/${metadataHash}.json`;
+        
+        await axios.post(supabaseUrl, metadata, {
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apiKey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log(`Successfully cached metadata JSON to Supabase Storage: ${metadataHash}.json`);
+      }
+    } catch (err: any) {
+      console.error('Failed to cache metadata JSON to Supabase Storage:', err.response?.data || err.message);
+    }
 
     const tokenURI = `ipfs://${jsonRes.data.IpfsHash}`;
 
