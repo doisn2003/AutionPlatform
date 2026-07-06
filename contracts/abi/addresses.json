@@ -1,8 +1,9 @@
 {
-  "ADF": "0x0165878a594ca255338adfa4d48449f69242eb8f",
-  "ADF_Pool": "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853",
-  "ADF_NFT": "0x610178da211fef7d417bc0e6fed39f05609ad788",
-  "AuctionExchange": "0xb7f8bc63bbcad18155201308c8f3540b07f84f5e",
+  "ADF": "0x5fbdb2315678afecb367f032d93f642f64180aa3",
+  "ADF_Pool": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+  "ADF_NFT": "0xdc64a140aa3e981100a9beca4e685f962f0cf6c9",
+  "AuctionExchange": "0x5fc8d32690cc91d4c39d9d3abcbd16989f875707",
+  "DisputeResolution": "0x0165878a594ca255338adfa4d48449f69242eb8f",
   "deployer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-  "deployedAt": "2026-07-05T04:47:34.931Z"
+  "deployedAt": "2026-07-06T07:21:00.805Z"
 }

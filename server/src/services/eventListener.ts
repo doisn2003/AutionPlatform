@@ -6,9 +6,10 @@
  */
 
 import { type Log } from 'viem';
-import { publicClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI, ADF_NFT_ABI, ADF_POOL_ABI } from '../config/blockchain';
+import { publicClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI, ADF_NFT_ABI, ADF_POOL_ABI, DISPUTE_RESOLUTION_ABI } from '../config/blockchain';
 import pool from '../config/db';
-import { incrementUserStat } from './reputationService';
+import { incrementUserStat, recalculateReputation } from './reputationService';
+import { assignJurorsAutomatically } from './oracleService';
 
 // ---- Catchup: Đọc event cũ từ block đã lưu ----
 async function catchupEvents(): Promise<void> {
@@ -78,6 +79,19 @@ async function catchupEvents(): Promise<void> {
     await handleAuctionEnded(event as any);
   }
 
+  // EscrowStarted events
+  const escrowStartedEvents = await publicClient.getContractEvents({
+    address: CONTRACT_ADDRESSES.AuctionExchange,
+    abi: AUCTION_EXCHANGE_ABI,
+    eventName: 'EscrowStarted',
+    fromBlock: fromBlock + 1n,
+    toBlock: currentBlock,
+  });
+
+  for (const event of escrowStartedEvents) {
+    await handleEscrowStarted(event as any);
+  }
+
   // AuctionCanceled events
   const canceledEvents = await publicClient.getContractEvents({
     address: CONTRACT_ADDRESSES.AuctionExchange,
@@ -143,10 +157,121 @@ async function catchupEvents(): Promise<void> {
     await handleDisputeOpened(event as any);
   }
 
+  // --- DISPUTE RESOLUTION CONTRACT EVENTS ---
+  if (CONTRACT_ADDRESSES.DisputeResolution && CONTRACT_ADDRESSES.DisputeResolution !== '0x') {
+    // DisputeCreated events
+    const disputeCreatedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'DisputeCreated',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of disputeCreatedEvents) {
+      await handleDisputeCreated(event as any);
+    }
+
+    // JurorsAssigned events
+    const jurorsAssignedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'JurorsAssigned',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of jurorsAssignedEvents) {
+      await handleJurorsAssigned(event as any);
+    }
+
+    // VoteCommitted events
+    const voteCommittedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'VoteCommitted',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of voteCommittedEvents) {
+      await handleVoteCommitted(event as any);
+    }
+
+    // VoteRevealed events
+    const voteRevealedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'VoteRevealed',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of voteRevealedEvents) {
+      await handleVoteRevealed(event as any);
+    }
+
+    // DisputeResolved events
+    const disputeResolvedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'DisputeResolved',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of disputeResolvedEvents) {
+      await handleDisputeResolved(event as any);
+    }
+
+    // JurorStaked events
+    const jurorStakedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'JurorStaked',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of jurorStakedEvents) {
+      await handleJurorStaked(event as any);
+    }
+
+    // JurorUnstaked events
+    const jurorUnstakedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'JurorUnstaked',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of jurorUnstakedEvents) {
+      await handleJurorUnstaked(event as any);
+    }
+
+    // JurorRewarded events
+    const jurorRewardedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'JurorRewarded',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of jurorRewardedEvents) {
+      await handleJurorRewarded(event as any);
+    }
+
+    // JurorPenalized events
+    const jurorPenalizedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'JurorPenalized',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of jurorPenalizedEvents) {
+      await handleJurorPenalized(event as any);
+    }
+  }
+
   // Cập nhật sync state
   await pool.query('UPDATE sync_state SET last_synced_block = $1, updated_at = NOW() WHERE id = 1', [currentBlock.toString()]);
 
-  console.log(`   ✅ Catchup done. Processed: ${createdEvents.length} created, ${bidEvents.length} bids, ${endedEvents.length} ended, ${canceledEvents.length} canceled, ${swapEthEvents.length + swapAdfEvents.length} swaps, ${deliveryEvents.length} deliveries, ${disputeEvents.length} disputes`);
+  console.log(`   ✅ Catchup done. Sync block: ${currentBlock}`);
 }
 
 // ---- Event Handlers ----
@@ -167,17 +292,21 @@ async function handleAuctionCreated(event: any): Promise<void> {
 
   const assetTypeStr = assetType === 1 ? 'PHYSICAL' : 'DIGITAL';
   let disputeTypeStr = 'NONE';
-  if (disputeType === 1) disputeTypeStr = 'ADMIN_RESOLVE';
-  else if (disputeType === 2) disputeTypeStr = 'VOTE_RESOLVE';
+  if (disputeType === 1) disputeTypeStr = 'GAME_THEORY_ESCROW';
+  else if (disputeType === 2) disputeTypeStr = 'JURY_VOTING';
 
   try {
     await pool.query(
       `INSERT INTO auctions (
          auction_id, seller, nft_token_id, end_time, reserve_price, 
-         min_bid_increment, tx_hash, block_number, asset_type, dispute_type, phase, escrow_deadline
+         min_bid_increment, tx_hash, block_number, asset_type, dispute_type, phase, escrow_deadline, escrow_duration
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       ON CONFLICT (auction_id) DO NOTHING`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       ON CONFLICT (auction_id) DO UPDATE SET
+         asset_type = EXCLUDED.asset_type,
+         dispute_type = EXCLUDED.dispute_type,
+         escrow_deadline = EXCLUDED.escrow_deadline,
+         escrow_duration = EXCLUDED.escrow_duration`,
       [
         Number(auctionId),
         seller.toLowerCase(),
@@ -190,7 +319,8 @@ async function handleAuctionCreated(event: any): Promise<void> {
         assetTypeStr,
         disputeTypeStr,
         'BIDDING',
-        escrowDeadlineDate ? escrowDeadlineDate.toISOString() : null
+        escrowDeadlineDate ? escrowDeadlineDate.toISOString() : null,
+        Number(escrowDuration)
       ]
     );
 
@@ -250,7 +380,6 @@ async function handleBidPlaced(event: any): Promise<void> {
         `UPDATE auctions SET hot_score = $1 WHERE auction_id = $2`,
         [hotScore, Number(auctionId)]
       );
-      console.log(`   🔥 Updated hot_score for Auction #${auctionId} to ${hotScore} (Bids: ${bidCount}, Vol: ${totalVolumeADF.toFixed(2)} ADF)`);
     }
 
     // Update user stats
@@ -302,12 +431,42 @@ async function handleAuctionEnded(event: any): Promise<void> {
   }
 }
 
+async function handleEscrowStarted(event: any): Promise<void> {
+  const { auctionId, buyer, seller, deadline } = event.args;
+
+  try {
+    const deadlineDate = new Date(Number(deadline) * 1000);
+    await pool.query(
+      `UPDATE auctions 
+       SET active = false, 
+           phase = 'ESCROW_HOLDING', 
+           escrow_deadline = $1, 
+           current_top_bidder = $2 
+       WHERE auction_id = $3`,
+      [deadlineDate.toISOString(), buyer.toLowerCase(), Number(auctionId)]
+    );
+
+    const res = await pool.query(`SELECT nft_token_id FROM auctions WHERE auction_id = $1`, [Number(auctionId)]);
+    if (res.rows.length > 0) {
+      const nftTokenId = res.rows[0].nft_token_id;
+      await pool.query(
+        `UPDATE nfts SET owner = $1 WHERE token_id = $2`,
+        [CONTRACT_ADDRESSES.AuctionExchange.toLowerCase(), nftTokenId]
+      );
+    }
+
+    console.log(`   🏁 EscrowStarted #${auctionId} — buyer: ${buyer}, deadline: ${deadlineDate.toISOString()}`);
+  } catch (err) {
+    console.error(`   ❌ Error saving EscrowStarted #${auctionId}:`, err);
+  }
+}
+
 async function handleAuctionCanceled(event: any): Promise<void> {
   const { auctionId } = event.args;
 
   try {
     await pool.query(
-      `UPDATE auctions SET active = false WHERE auction_id = $1`,
+      `UPDATE auctions SET active = false, phase = 'CANCELED' WHERE auction_id = $1`,
       [Number(auctionId)]
     );
 
@@ -467,6 +626,390 @@ async function handleDisputeOpened(event: any): Promise<void> {
   }
 }
 
+// --- DISPUTE RESOLUTION EVENT HANDLERS ---
+
+async function handleDisputeCreated(event: any): Promise<void> {
+  const { disputeId, auctionId, initiator } = event.args;
+  const txHash = event.transactionHash;
+  const blockNumber = event.blockNumber;
+
+  try {
+    // Đọc thông tin chi tiết tranh chấp từ smart contract
+    const onChainDispute = await publicClient.readContract({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      functionName: 'disputes',
+      args: [BigInt(disputeId)]
+    });
+
+    const buyer = onChainDispute[1];
+    const seller = onChainDispute[2];
+    const initiatorAddress = onChainDispute[3];
+    const buyerEvidenceIPFS = onChainDispute[4];
+    const sellerEvidenceIPFS = onChainDispute[5];
+    const phaseVal = onChainDispute[6];
+    const evidenceDeadline = onChainDispute[7];
+    const commitDeadline = onChainDispute[8];
+    const revealDeadline = onChainDispute[9];
+    const buyerVotes = onChainDispute[10];
+    const sellerVotes = onChainDispute[11];
+    const abstainCount = onChainDispute[12];
+    const resolved = onChainDispute[13];
+
+    const phaseStr = ['EVIDENCE', 'COMMIT', 'REVEAL', 'RESOLVED'][Number(phaseVal)] || 'EVIDENCE';
+
+    await pool.query(
+      `INSERT INTO disputes (
+         dispute_id, auction_id, buyer, seller, initiator, 
+         buyer_evidence_ipfs, seller_evidence_ipfs, phase, 
+         evidence_deadline, commit_deadline, reveal_deadline, 
+         buyer_votes, seller_votes, abstain_count, resolved, 
+         tx_hash, block_number
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+       ON CONFLICT (dispute_id) DO UPDATE SET
+         phase = EXCLUDED.phase,
+         buyer_evidence_ipfs = EXCLUDED.buyer_evidence_ipfs,
+         seller_evidence_ipfs = EXCLUDED.seller_evidence_ipfs,
+         evidence_deadline = EXCLUDED.evidence_deadline,
+         commit_deadline = EXCLUDED.commit_deadline,
+         reveal_deadline = EXCLUDED.reveal_deadline,
+         buyer_votes = EXCLUDED.buyer_votes,
+         seller_votes = EXCLUDED.seller_votes,
+         abstain_count = EXCLUDED.abstain_count,
+         resolved = EXCLUDED.resolved,
+         updated_at = NOW()`,
+      [
+        Number(disputeId),
+        Number(auctionId),
+        buyer.toLowerCase(),
+        seller.toLowerCase(),
+        initiatorAddress.toLowerCase(),
+        buyerEvidenceIPFS || null,
+        sellerEvidenceIPFS || null,
+        phaseStr,
+        evidenceDeadline ? new Date(Number(evidenceDeadline) * 1000).toISOString() : null,
+        commitDeadline ? new Date(Number(commitDeadline) * 1000).toISOString() : null,
+        revealDeadline ? new Date(Number(revealDeadline) * 1000).toISOString() : null,
+        Number(buyerVotes),
+        Number(sellerVotes),
+        Number(abstainCount),
+        resolved,
+        txHash,
+        Number(blockNumber)
+      ]
+    );
+
+    // Cập nhật số lần mở tranh chấp
+    await incrementUserStat(initiator, 'total_disputes_filed');
+
+    console.log(`   ⚖️ DisputeCreated #${disputeId} synced — Auction #${auctionId}`);
+
+    // Tự động kích hoạt gán Trọng tài (Oracle Service)
+    assignJurorsAutomatically(Number(disputeId), Number(auctionId)).catch(err => {
+      console.error(`   ❌ Oracle assignment trigger failed:`, err);
+    });
+  } catch (err) {
+    console.error(`   ❌ Error saving DisputeCreated #${disputeId}:`, err);
+  }
+}
+
+async function handleJurorsAssigned(event: any): Promise<void> {
+  const { disputeId, jurors } = event.args;
+
+  try {
+    const disputeInfo = await publicClient.readContract({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      functionName: 'disputes',
+      args: [BigInt(disputeId)]
+    });
+    const commitDeadline = disputeInfo[8];
+
+    const jurorsLower = jurors.map((j: string) => j.toLowerCase());
+
+    // Cập nhật bảng disputes
+    await pool.query(
+      `UPDATE disputes 
+       SET 
+         selected_jurors = $1, 
+         phase = 'COMMIT',
+         commit_deadline = $2,
+         updated_at = NOW()
+       WHERE dispute_id = $3`,
+      [
+        jurorsLower,
+        commitDeadline ? new Date(Number(commitDeadline) * 1000).toISOString() : null,
+        Number(disputeId)
+      ]
+    );
+
+    // Khởi tạo các dòng trống cho trọng tài bầu chọn
+    for (const juror of jurorsLower) {
+      await pool.query(
+        `INSERT INTO dispute_votes (dispute_id, juror)
+         VALUES ($1, $2)
+         ON CONFLICT (dispute_id, juror) DO NOTHING`,
+        [Number(disputeId), juror]
+      );
+    }
+
+    console.log(`   👥 JurorsAssigned for Dispute #${disputeId} synced: ${jurorsLower.join(', ')}`);
+  } catch (err) {
+    console.error(`   ❌ Error saving JurorsAssigned #${disputeId}:`, err);
+  }
+}
+
+async function handleVoteCommitted(event: any): Promise<void> {
+  const { disputeId, juror, commitHash } = event.args;
+  const txHash = event.transactionHash;
+  const blockNumber = event.blockNumber;
+
+  try {
+    await pool.query(
+      `INSERT INTO dispute_votes (dispute_id, juror, has_committed, commit_hash, tx_hash, block_number, updated_at)
+       VALUES ($1, $2, true, $3, $4, $5, NOW())
+       ON CONFLICT (dispute_id, juror) DO UPDATE SET
+         has_committed = true,
+         commit_hash = EXCLUDED.commit_hash,
+         tx_hash = EXCLUDED.tx_hash,
+         block_number = EXCLUDED.block_number,
+         updated_at = NOW()`,
+      [
+        Number(disputeId),
+        juror.toLowerCase(),
+        commitHash,
+        txHash,
+        Number(blockNumber)
+      ]
+    );
+
+    // Đọc trạng thái phase phòng khi tự chuyển pha REVEAL
+    const disputeInfo = await publicClient.readContract({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      functionName: 'disputes',
+      args: [BigInt(disputeId)]
+    });
+    const phaseVal = disputeInfo[6];
+    const revealDeadline = disputeInfo[9];
+
+    if (Number(phaseVal) === 2) { // 2 = REVEAL
+      await pool.query(
+        `UPDATE disputes 
+         SET 
+           phase = 'REVEAL', 
+           reveal_deadline = $1,
+           updated_at = NOW() 
+         WHERE dispute_id = $2`,
+        [
+          revealDeadline ? new Date(Number(revealDeadline) * 1000).toISOString() : null,
+          Number(disputeId)
+        ]
+      );
+      console.log(`   🔔 Dispute #${disputeId} phase auto-advanced to REVEAL in DB`);
+    }
+
+    console.log(`   🔒 VoteCommitted synced — Dispute #${disputeId} by ${juror}`);
+  } catch (err) {
+    console.error(`   ❌ Error saving VoteCommitted #${disputeId}:`, err);
+  }
+}
+
+async function handleVoteRevealed(event: any): Promise<void> {
+  const { disputeId, juror, vote } = event.args;
+  const txHash = event.transactionHash;
+  const blockNumber = event.blockNumber;
+
+  try {
+    await pool.query(
+      `INSERT INTO dispute_votes (dispute_id, juror, has_revealed, revealed_vote, tx_hash, block_number, updated_at)
+       VALUES ($1, $2, true, $3, $4, $5, NOW())
+       ON CONFLICT (dispute_id, juror) DO UPDATE SET
+         has_revealed = true,
+         revealed_vote = EXCLUDED.revealed_vote,
+         tx_hash = EXCLUDED.tx_hash,
+         block_number = EXCLUDED.block_number,
+         updated_at = NOW()`,
+      [
+        Number(disputeId),
+        juror.toLowerCase(),
+        Number(vote),
+        txHash,
+        Number(blockNumber)
+      ]
+    );
+
+    // Đồng bộ số lượng phiếu bầu hiện tại
+    if (Number(vote) === 1) {
+      await pool.query(`UPDATE disputes SET buyer_votes = buyer_votes + 1, updated_at = NOW() WHERE dispute_id = $1`, [Number(disputeId)]);
+    } else if (Number(vote) === 2) {
+      await pool.query(`UPDATE disputes SET seller_votes = seller_votes + 1, updated_at = NOW() WHERE dispute_id = $1`, [Number(disputeId)]);
+    }
+
+    console.log(`   🔓 VoteRevealed synced — Dispute #${disputeId} by ${juror} (Vote: ${vote})`);
+  } catch (err) {
+    console.error(`   ❌ Error saving VoteRevealed #${disputeId}:`, err);
+  }
+}
+
+async function handleDisputeResolved(event: any): Promise<void> {
+  const { disputeId, winner, buyerVotes, sellerVotes, abstainCount } = event.args;
+
+  try {
+    const winnerAddress = winner.toLowerCase();
+
+    // Cập nhật tranh chấp
+    await pool.query(
+      `UPDATE disputes 
+       SET 
+         resolved = true,
+         phase = 'RESOLVED',
+         winner = $1,
+         buyer_votes = $2,
+         seller_votes = $3,
+         abstain_count = $4,
+         updated_at = NOW()
+       WHERE dispute_id = $5`,
+      [
+        winnerAddress,
+        Number(buyerVotes),
+        Number(sellerVotes),
+        Number(abstainCount),
+        Number(disputeId)
+      ]
+    );
+
+    // Lấy thông tin dispute để cập nhật stats và đấu giá
+    const res = await pool.query(`SELECT auction_id, buyer, seller FROM disputes WHERE dispute_id = $1`, [Number(disputeId)]);
+    if (res.rows.length > 0) {
+      const { auction_id, buyer, seller } = res.rows[0];
+      
+      // Đánh dấu đấu giá là RESOLVED
+      await pool.query(`UPDATE auctions SET phase = 'RESOLVED' WHERE auction_id = $1`, [auction_id]);
+
+      const isBuyerWinner = winnerAddress === buyer.toLowerCase();
+      const buyerProfile = buyer.toLowerCase();
+      const sellerProfile = seller.toLowerCase();
+
+      // Cập nhật thống kê thắng/thua
+      if (isBuyerWinner) {
+        await incrementUserStat(buyerProfile, 'total_disputes_won');
+        await incrementUserStat(sellerProfile, 'total_disputes_lost');
+      } else {
+        await incrementUserStat(sellerProfile, 'total_disputes_won');
+        await incrementUserStat(buyerProfile, 'total_disputes_lost');
+      }
+    }
+
+    console.log(`   ⚖️ DisputeResolved #${disputeId} synced — Winner: ${winner}`);
+  } catch (err) {
+    console.error(`   ❌ Error saving DisputeResolved #${disputeId}:`, err);
+  }
+}
+
+async function handleJurorStaked(event: any): Promise<void> {
+  const { juror, amount } = event.args;
+
+  try {
+    const jurorAddress = juror.toLowerCase();
+    await pool.query(
+      `UPDATE user_profiles 
+       SET adf_staked_for_juror = adf_staked_for_juror + $1, updated_at = NOW() 
+       WHERE wallet_address = $2`,
+      [amount.toString(), jurorAddress]
+    );
+    await recalculateReputation(jurorAddress);
+    console.log(`   🛡️ JurorStaked synced: ${jurorAddress} staked +${Number(amount)/1e18} ADF`);
+  } catch (err) {
+    console.error(`   ❌ Error saving JurorStaked:`, err);
+  }
+}
+
+async function handleJurorUnstaked(event: any): Promise<void> {
+  const { juror, amount } = event.args;
+
+  try {
+    const jurorAddress = juror.toLowerCase();
+    await pool.query(
+      `UPDATE user_profiles 
+       SET adf_staked_for_juror = adf_staked_for_juror - $1, updated_at = NOW() 
+       WHERE wallet_address = $2`,
+      [amount.toString(), jurorAddress]
+    );
+    await recalculateReputation(jurorAddress);
+    console.log(`   🛡️ JurorUnstaked synced: ${jurorAddress} unstaked -${Number(amount)/1e18} ADF`);
+  } catch (err) {
+    console.error(`   ❌ Error saving JurorUnstaked:`, err);
+  }
+}
+
+async function handleJurorRewarded(event: any): Promise<void> {
+  const { juror, amount } = event.args;
+
+  try {
+    const jurorAddress = juror.toLowerCase();
+    
+    // 1. Cập nhật số dư stake trong profile
+    await pool.query(
+      `UPDATE user_profiles 
+       SET adf_staked_for_juror = adf_staked_for_juror + $1, updated_at = NOW() 
+       WHERE wallet_address = $2`,
+      [amount.toString(), jurorAddress]
+    );
+
+    // 2. Cập nhật số tiền thưởng vào bảng dispute_votes cho vụ tranh chấp tương ứng
+    await pool.query(
+      `UPDATE dispute_votes 
+       SET reward_amount = $1, updated_at = NOW() 
+       WHERE LOWER(juror) = $2 AND dispute_id = (
+         SELECT dispute_id FROM disputes 
+         WHERE selected_jurors @> ARRAY[$2::varchar] 
+         ORDER BY created_at DESC LIMIT 1
+       )`,
+      [amount.toString(), jurorAddress]
+    );
+
+    await recalculateReputation(jurorAddress);
+    console.log(`   🎁 JurorRewarded synced: ${jurorAddress} rewarded +${Number(amount)/1e18} ADF`);
+  } catch (err) {
+    console.error(`   ❌ Error saving JurorRewarded:`, err);
+  }
+}
+
+async function handleJurorPenalized(event: any): Promise<void> {
+  const { juror, amount } = event.args;
+
+  try {
+    const jurorAddress = juror.toLowerCase();
+    
+    // 1. Cập nhật số dư stake trong profile
+    await pool.query(
+      `UPDATE user_profiles 
+       SET adf_staked_for_juror = GREATEST(0, adf_staked_for_juror - $1), updated_at = NOW() 
+       WHERE wallet_address = $2`,
+      [amount.toString(), jurorAddress]
+    );
+
+    // 2. Cập nhật số tiền phạt vào bảng dispute_votes cho vụ tranh chấp tương ứng
+    await pool.query(
+      `UPDATE dispute_votes 
+       SET penalty_amount = $1, updated_at = NOW() 
+       WHERE LOWER(juror) = $2 AND dispute_id = (
+         SELECT dispute_id FROM disputes 
+         WHERE selected_jurors @> ARRAY[$2::varchar] 
+         ORDER BY created_at DESC LIMIT 1
+       )`,
+      [amount.toString(), jurorAddress]
+    );
+
+    await recalculateReputation(jurorAddress);
+    console.log(`   🔨 JurorPenalized synced: ${jurorAddress} penalized -${Number(amount)/1e18} ADF`);
+  } catch (err) {
+    console.error(`   ❌ Error saving JurorPenalized:`, err);
+  }
+}
+
 // ---- Watch: Lắng nghe event realtime ----
 function watchEvents(): void {
   console.log('👁️  Watching for new blockchain events...');
@@ -514,6 +1057,18 @@ function watchEvents(): void {
     onLogs: (logs) => {
       for (const log of logs) {
         handleAuctionEnded(log);
+        updateSyncBlock(log.blockNumber);
+      }
+    },
+  });
+
+  publicClient.watchContractEvent({
+    address: CONTRACT_ADDRESSES.AuctionExchange,
+    abi: AUCTION_EXCHANGE_ABI,
+    eventName: 'EscrowStarted',
+    onLogs: (logs) => {
+      for (const log of logs) {
+        handleEscrowStarted(log);
         updateSyncBlock(log.blockNumber);
       }
     },
@@ -578,6 +1133,117 @@ function watchEvents(): void {
       }
     },
   });
+
+  // --- DISPUTE RESOLUTION CONTRACT WATCHERS ---
+  if (CONTRACT_ADDRESSES.DisputeResolution && CONTRACT_ADDRESSES.DisputeResolution !== '0x') {
+    publicClient.watchContractEvent({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'DisputeCreated',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          handleDisputeCreated(log);
+          updateSyncBlock(log.blockNumber);
+        }
+      },
+    });
+
+    publicClient.watchContractEvent({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'JurorsAssigned',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          handleJurorsAssigned(log);
+          updateSyncBlock(log.blockNumber);
+        }
+      },
+    });
+
+    publicClient.watchContractEvent({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'VoteCommitted',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          handleVoteCommitted(log);
+          updateSyncBlock(log.blockNumber);
+        }
+      },
+    });
+
+    publicClient.watchContractEvent({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'VoteRevealed',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          handleVoteRevealed(log);
+          updateSyncBlock(log.blockNumber);
+        }
+      },
+    });
+
+    publicClient.watchContractEvent({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'DisputeResolved',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          handleDisputeResolved(log);
+          updateSyncBlock(log.blockNumber);
+        }
+      },
+    });
+
+    publicClient.watchContractEvent({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'JurorStaked',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          handleJurorStaked(log);
+          updateSyncBlock(log.blockNumber);
+        }
+      },
+    });
+
+    publicClient.watchContractEvent({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'JurorUnstaked',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          handleJurorUnstaked(log);
+          updateSyncBlock(log.blockNumber);
+        }
+      },
+    });
+
+    publicClient.watchContractEvent({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'JurorRewarded',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          handleJurorRewarded(log);
+          updateSyncBlock(log.blockNumber);
+        }
+      },
+    });
+
+    publicClient.watchContractEvent({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'JurorPenalized',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          handleJurorPenalized(log);
+          updateSyncBlock(log.blockNumber);
+        }
+      },
+    });
+  }
 }
 
 async function updateSyncBlock(blockNumber: bigint): Promise<void> {
@@ -595,7 +1261,8 @@ async function updateSyncBlock(blockNumber: bigint): Promise<void> {
 // ---- Main Export ----
 export async function startEventListener(): Promise<void> {
   console.log('\n🔗 Starting Blockchain Event Listener...');
-  console.log(`   Contract: ${CONTRACT_ADDRESSES.AuctionExchange}`);
+  console.log(`   Contract Exchange: ${CONTRACT_ADDRESSES.AuctionExchange}`);
+  console.log(`   Contract Dispute: ${CONTRACT_ADDRESSES.DisputeResolution}`);
   
   // Catchup first, then watch
   await catchupEvents();
