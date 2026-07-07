@@ -1,9 +1,9 @@
 {
-  "ADF": "0x959922be3caee4b8cd9a407cc3ac1c251c2007b1",
-  "ADF_Pool": "0x9a9f2ccfde556a7e9ff0848998aa4a0cfd8863ae",
-  "ADF_NFT": "0xc6e7df5e7b4f2a278906862b61205850344d4e7d",
-  "AuctionExchange": "0x59b670e9fa9d0a427751af201d676719a970857b",
-  "DisputeResolution": "0x4ed7c70f96b99c776995fb64377f0d4ab3b0e1c1",
+  "ADF": "0x5fbdb2315678afecb367f032d93f642f64180aa3",
+  "ADF_Pool": "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+  "ADF_NFT": "0xdc64a140aa3e981100a9beca4e685f962f0cf6c9",
+  "AuctionExchange": "0x5fc8d32690cc91d4c39d9d3abcbd16989f875707",
+  "DisputeResolution": "0x0165878a594ca255338adfa4d48449f69242eb8f",
   "deployer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
   "jurors": [
     "0xcd3b766ccdd6ae721141f452c550ca635964ce71",
@@ -12,5 +12,5 @@
     "0xdd2fd4581271e230360230f9337d5c0430bf44c0",
     "0x8626f6940e2eb28930efb4cef49b2d1f2c9c1199"
   ],
-  "deployedAt": "2026-07-07T15:59:52.146Z"
+  "deployedAt": "2026-07-07T17:08:49.625Z"
 }

@@ -1067,6 +1067,21 @@ async function handleDisputeResolved(event: any): Promise<void> {
         await incrementUserStat(sellerProfile, 'total_disputes_won');
         await incrementUserStat(buyerProfile, 'total_disputes_lost');
       }
+
+      // Cập nhật quyền sở hữu NFT trong cơ sở dữ liệu:
+      // - Nếu Buyer thắng -> Giao dịch hủy -> NFT trả về cho Seller
+      // - Nếu Seller thắng -> Giao dịch hoàn tất -> NFT chuyển sang Buyer
+      const auctionRes = await pool.query(`SELECT nft_token_id FROM auctions WHERE auction_id = $1`, [auction_id]);
+      if (auctionRes.rows.length > 0) {
+        const nftTokenId = Number(auctionRes.rows[0].nft_token_id);
+        const nftNewOwner = isBuyerWinner ? sellerProfile : buyerProfile;
+        
+        await pool.query(
+          `UPDATE nfts SET owner = $1, updated_at = NOW() WHERE token_id = $2`,
+          [nftNewOwner, nftTokenId]
+        );
+        console.log(`   🎨 Sync NFT Owner: NFT #${nftTokenId} ownership updated to ${nftNewOwner}`);
+      }
     }
 
     console.log(`   ⚖️ DisputeResolved #${disputeId} synced — Winner: ${winner}`);

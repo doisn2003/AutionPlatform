@@ -81,6 +81,12 @@ async function checkAndUpdateDisputes(): Promise<void> {
       `SELECT dispute_id, auction_id, phase, resolved FROM disputes WHERE resolved = false`
     );
 
+    if (activeDisputes.rows.length === 0) return;
+
+    // Lấy block mới nhất trên blockchain để đồng bộ mốc thời gian
+    const latestBlock = await publicClient.getBlock();
+    const blockTimestamp = Number(latestBlock.timestamp);
+
     const phaseMap: Record<number, string> = {
       0: 'EVIDENCE',
       1: 'COMMIT',
@@ -147,19 +153,15 @@ async function checkAndUpdateDisputes(): Promise<void> {
           continue; // Đã đồng bộ xong, bỏ qua kiểm tra hết hạn ở chu kỳ này
         }
 
-        // 2. Nếu pha đồng bộ, kiểm tra xem đã quá thời hạn chưa để kích hoạt hành động
-        const now = new Date();
-
+        // 2. So sánh thời hạn hết pha dựa trên block.timestamp
         if (onChainPhase === 'EVIDENCE') {
-          const deadline = onChainEvidenceDeadline ? new Date(Number(onChainEvidenceDeadline) * 1000) : null;
-          if (deadline && deadline <= now) {
+          if (onChainEvidenceDeadline && Number(onChainEvidenceDeadline) <= blockTimestamp) {
             console.log(`⏰ Cron: EVIDENCE expired for Dispute #${disputeId}. Triggering juror assignment...`);
             await assignJurorsAutomatically(disputeId, auctionId);
           }
         } 
         else if (onChainPhase === 'COMMIT') {
-          const deadline = onChainCommitDeadline ? new Date(Number(onChainCommitDeadline) * 1000) : null;
-          if (deadline && deadline <= now) {
+          if (onChainCommitDeadline && Number(onChainCommitDeadline) <= blockTimestamp) {
             console.log(`⏰ Cron: COMMIT expired for Dispute #${disputeId}. Advancing to REVEAL...`);
             try {
               const hash = await walletClient.writeContract({
@@ -176,8 +178,7 @@ async function checkAndUpdateDisputes(): Promise<void> {
           }
         } 
         else if (onChainPhase === 'REVEAL') {
-          const deadline = onChainRevealDeadline ? new Date(Number(onChainRevealDeadline) * 1000) : null;
-          if (deadline && deadline <= now) {
+          if (onChainRevealDeadline && Number(onChainRevealDeadline) <= blockTimestamp) {
             console.log(`⏰ Cron: REVEAL expired for Dispute #${disputeId}. Resolving dispute...`);
             try {
               const hash = await walletClient.writeContract({
