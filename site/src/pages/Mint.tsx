@@ -9,7 +9,9 @@ import React, { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import * as LucideIcons from 'lucide-react';
 import { uploadToIPFS } from '../services/ipfsApi';
-import { useMintNFT, useBurnNFT } from '../hooks/useContractActions';
+import { useMintNFT, useBurnNFT, useFaucet, useWithdraw } from '../hooks/useContractActions';
+import { useADFBalance, usePendingReturns } from '../hooks/useReadContract';
+import FloatingWalletWidget from '../components/layout/FloatingWalletWidget/FloatingWalletWidget';
 import { useNFTImage } from '../hooks/useNFTImage';
 import Layout from '../components/layout/Layout';
 import CreateAuctionModal from '../components/mint/CreateAuctionModal';
@@ -64,6 +66,25 @@ const Mint: React.FC = () => {
   const { mint, isPending: isMinting, isConfirmed: isMintConfirmed } = useMintNFT();
   
   const { burn, isPending: isBurning, isConfirmed: isBurnConfirmed, error: burnError } = useBurnNFT();
+
+  // Floating Wallet Hooks
+  const { data: balance, refetch: refetchBalance } = useADFBalance(address);
+  const { data: pendingReturns, refetch: refetchPendingReturns } = usePendingReturns(address);
+  const { faucet, isPending: isFauceting, isConfirming: isFaucetConfirming, isConfirmed: isFaucetConfirmed } = useFaucet();
+  const { withdraw, isPending: isWithdrawing, isConfirming: isWithdrawConfirming, isConfirmed: isWithdrawConfirmed } = useWithdraw();
+
+  useEffect(() => {
+    if (isFaucetConfirmed) {
+      refetchBalance();
+    }
+  }, [isFaucetConfirmed, refetchBalance]);
+
+  useEffect(() => {
+    if (isWithdrawConfirmed) {
+      refetchBalance();
+      refetchPendingReturns();
+    }
+  }, [isWithdrawConfirmed, refetchBalance, refetchPendingReturns]);
 
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [loadingCollection, setLoadingCollection] = useState(false);
@@ -607,6 +628,17 @@ const Mint: React.FC = () => {
           />
         )}
       </div>
+      {isConnected && (
+        <FloatingWalletWidget
+          balance={balance !== undefined ? balance : 0n}
+          pendingReturns={pendingReturns !== undefined ? pendingReturns : 0n}
+          onWithdraw={() => withdraw()}
+          isWithdrawing={isWithdrawing}
+          isWithdrawConfirming={isWithdrawConfirming}
+          onDeposit={() => faucet()}
+          isDepositing={isFauceting || isFaucetConfirming}
+        />
+      )}
     </Layout>
   );
 };

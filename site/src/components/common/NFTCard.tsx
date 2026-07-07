@@ -123,19 +123,12 @@ const NFTCard: React.FC<NFTCardProps> = ({ auction, onBid }) => {
             </div>
           </div>
           
-          {/* Action buttons */}
           {!isEnded && !isExpired && (
             <button 
               className="btn btn-primary btn-sm w-full" 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (onBid) onBid();
-              }}
-              disabled={!onBid}
               style={{ marginTop: '12px' }}
             >
-              {onBid ? 'ĐẤU GIÁ NHANH' : 'Kết nối ví để đấu giá'}
+              ĐẤU NGAY
             </button>
           )}
           

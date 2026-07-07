@@ -126,7 +126,8 @@
 
 .arrowButton:hover {
   background: var(--color-primary);
-  color: #3c2f00; /* onPrimary */
+  color: #3c2f00;
+  /* onPrimary */
   border-color: var(--color-primary);
   box-shadow: 0 0 12px rgba(242, 202, 80, 0.4);
 }
@@ -259,9 +260,11 @@
   .lightboxArrowLeft {
     left: 10px;
   }
+
   .lightboxArrowRight {
     right: 10px;
   }
+
   .lightboxImage {
     max-width: 95%;
   }

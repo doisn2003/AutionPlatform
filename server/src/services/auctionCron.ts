@@ -7,8 +7,9 @@
  * Cron chạy mỗi 30 giây, kiểm tra DB tìm phiên đã hết thời gian và gọi on-chain.
  */
 
-import { publicClient, walletClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI } from '../config/blockchain';
+import { publicClient, walletClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI, DISPUTE_RESOLUTION_ABI } from '../config/blockchain';
 import pool from '../config/db';
+import { assignJurorsAutomatically } from './oracleService';
 
 let cronInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -61,7 +62,6 @@ async function checkAndEndExpiredAuctions(): Promise<void> {
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         console.log(`   ✅ Auction #${auctionId} ended! tx: ${receipt.transactionHash}`);
       } catch (err: any) {
-        // Có thể lỗi "Auction has not ended yet" nếu thời gian chưa tới on-chain
         console.error(`   ❌ Failed to end auction #${auctionId}:`, err.message || err);
       }
     }
@@ -70,14 +70,153 @@ async function checkAndEndExpiredAuctions(): Promise<void> {
   }
 }
 
+async function checkAndUpdateDisputes(): Promise<void> {
+  if (!walletClient) return;
+
+  try {
+    const [oracleAccount] = await walletClient.getAddresses();
+
+    // Lấy tất cả các tranh chấp chưa được đánh dấu là resolved trong DB
+    const activeDisputes = await pool.query(
+      `SELECT dispute_id, auction_id, phase, resolved FROM disputes WHERE resolved = false`
+    );
+
+    const phaseMap: Record<number, string> = {
+      0: 'EVIDENCE',
+      1: 'COMMIT',
+      2: 'REVEAL',
+      3: 'RESOLVED'
+    };
+
+    for (const d of activeDisputes.rows) {
+      const disputeId = Number(d.dispute_id);
+      const auctionId = Number(d.auction_id);
+      const dbPhase = d.phase;
+
+      try {
+        // Đọc trạng thái on-chain trực tiếp của tranh chấp này
+        const disputeInfo = await publicClient.readContract({
+          address: CONTRACT_ADDRESSES.DisputeResolution,
+          abi: DISPUTE_RESOLUTION_ABI,
+          functionName: 'disputes',
+          args: [BigInt(disputeId)]
+        });
+
+        const onChainPhaseNum = Number(disputeInfo[6]);
+        const onChainPhase = phaseMap[onChainPhaseNum] || 'EVIDENCE';
+        const onChainEvidenceDeadline = disputeInfo[7];
+        const onChainCommitDeadline = disputeInfo[8];
+        const onChainRevealDeadline = disputeInfo[9];
+        const onChainBuyerVotes = Number(disputeInfo[10]);
+        const onChainSellerVotes = Number(disputeInfo[11]);
+        const onChainAbstainCount = Number(disputeInfo[12]);
+        const onChainResolved = disputeInfo[13];
+
+        // 1. Cơ chế Tự sửa lỗi (Self-Healing Sync):
+        // Nếu pha hoặc trạng thái on-chain khác với database, lập tức đồng bộ DB theo blockchain
+        if (dbPhase !== onChainPhase || onChainResolved) {
+          console.log(`🔄 Sync: Mismatch detected for Dispute #${disputeId}. DB Phase: ${dbPhase}, Blockchain Phase: ${onChainPhase}. Syncing...`);
+          
+          await pool.query(
+            `UPDATE disputes 
+             SET 
+               phase = $1, 
+               evidence_deadline = $2,
+               commit_deadline = $3,
+               reveal_deadline = $4,
+               buyer_votes = $5,
+               seller_votes = $6,
+               abstain_count = $7,
+               resolved = $8,
+               updated_at = NOW() 
+             WHERE dispute_id = $9`,
+            [
+              onChainPhase,
+              onChainEvidenceDeadline ? new Date(Number(onChainEvidenceDeadline) * 1000).toISOString() : null,
+              onChainCommitDeadline ? new Date(Number(onChainCommitDeadline) * 1000).toISOString() : null,
+              onChainRevealDeadline ? new Date(Number(onChainRevealDeadline) * 1000).toISOString() : null,
+              onChainBuyerVotes,
+              onChainSellerVotes,
+              onChainAbstainCount,
+              onChainResolved,
+              disputeId
+            ]
+          );
+          
+          console.log(`   ✅ Synced Dispute #${disputeId} state to DB successfully.`);
+          continue; // Đã đồng bộ xong, bỏ qua kiểm tra hết hạn ở chu kỳ này
+        }
+
+        // 2. Nếu pha đồng bộ, kiểm tra xem đã quá thời hạn chưa để kích hoạt hành động
+        const now = new Date();
+
+        if (onChainPhase === 'EVIDENCE') {
+          const deadline = onChainEvidenceDeadline ? new Date(Number(onChainEvidenceDeadline) * 1000) : null;
+          if (deadline && deadline <= now) {
+            console.log(`⏰ Cron: EVIDENCE expired for Dispute #${disputeId}. Triggering juror assignment...`);
+            await assignJurorsAutomatically(disputeId, auctionId);
+          }
+        } 
+        else if (onChainPhase === 'COMMIT') {
+          const deadline = onChainCommitDeadline ? new Date(Number(onChainCommitDeadline) * 1000) : null;
+          if (deadline && deadline <= now) {
+            console.log(`⏰ Cron: COMMIT expired for Dispute #${disputeId}. Advancing to REVEAL...`);
+            try {
+              const hash = await walletClient.writeContract({
+                address: CONTRACT_ADDRESSES.DisputeResolution,
+                abi: DISPUTE_RESOLUTION_ABI,
+                functionName: 'checkAndUpdatePhase',
+                args: [BigInt(disputeId)],
+                account: oracleAccount,
+              });
+              console.log(`   ✅ Sent checkAndUpdatePhase for Dispute #${disputeId}. Tx: ${hash}`);
+            } catch (err: any) {
+              console.error(`   ❌ Failed to advance phase for Dispute #${disputeId}:`, err.message || err);
+            }
+          }
+        } 
+        else if (onChainPhase === 'REVEAL') {
+          const deadline = onChainRevealDeadline ? new Date(Number(onChainRevealDeadline) * 1000) : null;
+          if (deadline && deadline <= now) {
+            console.log(`⏰ Cron: REVEAL expired for Dispute #${disputeId}. Resolving dispute...`);
+            try {
+              const hash = await walletClient.writeContract({
+                address: CONTRACT_ADDRESSES.DisputeResolution,
+                abi: DISPUTE_RESOLUTION_ABI,
+                functionName: 'resolveDispute',
+                args: [BigInt(disputeId)],
+                account: oracleAccount,
+              });
+              console.log(`   ✅ Sent resolveDispute for Dispute #${disputeId}. Tx: ${hash}`);
+            } catch (err: any) {
+              console.error(`   ❌ Failed to resolve dispute #${disputeId}:`, err.message || err);
+            }
+          }
+        }
+
+      } catch (disputeErr: any) {
+        console.error(`❌ Cron error processing individual Dispute #${disputeId}:`, disputeErr.message || disputeErr);
+      }
+    }
+
+  } catch (err) {
+    console.error('❌ Cron checkAndUpdateDisputes failed:', err);
+  }
+}
+
+async function runCronCycle(): Promise<void> {
+  await checkAndEndExpiredAuctions();
+  await checkAndUpdateDisputes();
+}
+
 export function startAuctionCron(): void {
-  console.log('⏰ Starting Auction Cron Job (every 30s)...');
+  console.log('⏰ Starting System Cron Job (every 10s)...');
 
   // Chạy ngay lần đầu
-  checkAndEndExpiredAuctions();
+  runCronCycle();
 
-  // Sau đó chạy mỗi 30 giây
-  cronInterval = setInterval(checkAndEndExpiredAuctions, 30_000);
+  // Sau đó chạy mỗi 10 giây
+  cronInterval = setInterval(runCronCycle, 10_000);
 
   console.log('   ✅ Cron job is running\n');
 }

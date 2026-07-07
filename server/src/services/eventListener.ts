@@ -1,6 +1,6 @@
 /**
  * Event Listener Service — Lắng nghe sự kiện blockchain & đồng bộ DB
- * 
+ * Updated: 2026-07-07T16:00:00Z
  * Sử dụng Viem watchContractEvent() cho realtime
  * + getContractEvents() cho catchup khi server restart
  */
@@ -10,6 +10,7 @@ import { publicClient, CONTRACT_ADDRESSES, AUCTION_EXCHANGE_ABI, ADF_NFT_ABI, AD
 import pool from '../config/db';
 import { incrementUserStat, recalculateReputation } from './reputationService';
 import { assignJurorsAutomatically } from './oracleService';
+import { broadcastToAuction } from './socketService';
 
 // ---- Catchup: Đọc event cũ từ block đã lưu ----
 async function catchupEvents(): Promise<void> {
@@ -207,6 +208,18 @@ async function catchupEvents(): Promise<void> {
       await handleVoteRevealed(event as any);
     }
 
+    // PhaseAdvanced events
+    const phaseAdvancedEvents = await publicClient.getContractEvents({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'PhaseAdvanced',
+      fromBlock: fromBlock + 1n,
+      toBlock: currentBlock,
+    });
+    for (const event of phaseAdvancedEvents) {
+      await handlePhaseAdvanced(event as any);
+    }
+
     // DisputeResolved events
     const disputeResolvedEvents = await publicClient.getContractEvents({
       address: CONTRACT_ADDRESSES.DisputeResolution,
@@ -356,7 +369,7 @@ async function handleAuctionCreated(event: any): Promise<void> {
 
   // Chuyển endTime (unix timestamp) sang Date
   const endTimeDate = new Date(Number(endTime) * 1000);
-  
+
   // Tính escrow_deadline nếu là PHYSICAL
   let escrowDeadlineDate = null;
   if (assetType === 1) {
@@ -442,7 +455,7 @@ async function handleBidPlaced(event: any): Promise<void> {
       `SELECT COUNT(*)::integer as bid_count, COALESCE(SUM(amount::numeric), 0) as total_volume FROM bids WHERE auction_id = $1`,
       [Number(auctionId)]
     );
-    
+
     if (statsResult.rows.length > 0) {
       const bidCount = statsResult.rows[0].bid_count;
       const totalVolumeWei = statsResult.rows[0].total_volume;
@@ -458,6 +471,14 @@ async function handleBidPlaced(event: any): Promise<void> {
     // Update user stats
     await incrementUserStat(bidder, 'total_bids_placed');
     await logUserTransaction(txHash, bidder, 'AUCTION_BID', amount, false);
+
+    // Broadcast real-time message to chat room
+    const amountAdf = (Number(amount) / 1e18).toFixed(2);
+    const bidderShort = `${bidder.slice(0, 6)}...${bidder.slice(-4)}`;
+    broadcastToAuction(
+      Number(auctionId),
+      `${bidderShort} đã đặt giá thầu dẫn đầu mới: ${amountAdf} ADF.`
+    );
 
     console.log(`   💰 BidPlaced #${auctionId} by ${bidder} — ${amount.toString()} wei`);
   } catch (err) {
@@ -480,14 +501,14 @@ async function handleAuctionEnded(event: any): Promise<void> {
       const { nft_token_id, seller, asset_type } = res.rows[0];
       const hasWinner = winner !== '0x0000000000000000000000000000000000000000';
       const newOwner = hasWinner ? winner : seller;
-      
+
       // Update NFT owner in DB
       await pool.query(`UPDATE nfts SET owner = $1 WHERE token_id = $2`, [newOwner.toLowerCase(), nft_token_id]);
 
       // Update user stats
       if (hasWinner) {
         await incrementUserStat(winner, 'total_bids_won');
-        
+
         // If DIGITAL asset, delivery is immediate -> successful_delivery + RESOLVED
         if (asset_type === 'DIGITAL') {
           await incrementUserStat(seller, 'successful_deliveries');
@@ -547,9 +568,9 @@ async function handleAuctionCanceled(event: any): Promise<void> {
     // Get nft_token_id and seller from the auction to revert the NFT owner
     const res = await pool.query(`SELECT nft_token_id, seller FROM auctions WHERE auction_id = $1`, [Number(auctionId)]);
     if (res.rows.length > 0) {
-        const nftTokenId = res.rows[0].nft_token_id;
-        const seller = res.rows[0].seller;
-        await pool.query(`UPDATE nfts SET owner = $1 WHERE token_id = $2`, [seller.toLowerCase(), nftTokenId]);
+      const nftTokenId = res.rows[0].nft_token_id;
+      const seller = res.rows[0].seller;
+      await pool.query(`UPDATE nfts SET owner = $1 WHERE token_id = $2`, [seller.toLowerCase(), nftTokenId]);
     }
 
     console.log(`   ❌ AuctionCanceled #${auctionId}`);
@@ -573,12 +594,12 @@ async function handleNFTMinted(event: any): Promise<void> {
 
     let metadataJSON: any = {};
     try {
-        if (typeof tokenURI === 'string' && tokenURI.startsWith('ipfs://')) {
-            const cid = tokenURI.replace('ipfs://', '');
-            const res = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
-            if(res.ok) metadataJSON = await res.json();
-        }
-    } catch(e) { console.error('Error fetching metadata', e) }
+      if (typeof tokenURI === 'string' && tokenURI.startsWith('ipfs://')) {
+        const cid = tokenURI.replace('ipfs://', '');
+        const res = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
+        if (res.ok) metadataJSON = await res.json();
+      }
+    } catch (e) { console.error('Error fetching metadata', e) }
 
     await pool.query(
       `INSERT INTO nfts (token_id, owner, token_uri, name, description, image, images, attributes, tx_hash, block_number)
@@ -626,7 +647,7 @@ async function handleSwapETHForADF(event: any): Promise<void> {
       ]
     );
     await logUserTransaction(txHash, buyer, 'SWAP_ETH_TO_ADF', adfOut, true);
-    console.log(`   💱 SwapETHForADF: ${buyer} swapped ${Number(ethIn)/1e18} ETH for ${Number(adfOut)/1e18} ADF`);
+    console.log(`   💱 SwapETHForADF: ${buyer} swapped ${Number(ethIn) / 1e18} ETH for ${Number(adfOut) / 1e18} ADF`);
   } catch (err) {
     console.error(`   ❌ Error saving SwapETHForADF:`, err);
   }
@@ -651,7 +672,7 @@ async function handleSwapADFForETH(event: any): Promise<void> {
       ]
     );
     await logUserTransaction(txHash, seller, 'SWAP_ADF_TO_ETH', adfIn, false);
-    console.log(`   💱 SwapADFForETH: ${seller} swapped ${Number(adfIn)/1e18} ADF for ${Number(ethOut)/1e18} ETH`);
+    console.log(`   💱 SwapADFForETH: ${seller} swapped ${Number(adfIn) / 1e18} ADF for ${Number(ethOut) / 1e18} ETH`);
   } catch (err) {
     console.error(`   ❌ Error saving SwapADFForETH:`, err);
   }
@@ -667,15 +688,23 @@ async function handleDeliveryConfirmed(event: any): Promise<void> {
       [Number(auctionId)]
     );
 
-    // Find seller to reward successful delivery
+    // Get current_top_bidder and nft_token_id to update NFT ownership
     const result = await pool.query(
-      `SELECT seller FROM auctions WHERE auction_id = $1`,
+      `SELECT current_top_bidder, nft_token_id, seller FROM auctions WHERE auction_id = $1`,
       [Number(auctionId)]
     );
 
     if (result.rows.length > 0) {
-      const seller = result.rows[0].seller;
+      const { current_top_bidder, nft_token_id, seller } = result.rows[0];
       await incrementUserStat(seller, 'successful_deliveries');
+
+      if (current_top_bidder) {
+        await pool.query(
+          `UPDATE nfts SET owner = $1 WHERE token_id = $2`,
+          [current_top_bidder.toLowerCase(), Number(nft_token_id)]
+        );
+        console.log(`   🖼️ NFT #${nft_token_id} owner updated in DB to buyer: ${current_top_bidder}`);
+      }
     }
 
     console.log(`   📦 DeliveryConfirmed for Auction #${auctionId}`);
@@ -696,6 +725,20 @@ async function handleDisputeOpened(event: any): Promise<void> {
 
     // Track dispute opened stat for initiator
     await incrementUserStat(initiator, 'total_disputes_filed');
+
+    // Get nft_token_id and seller to return NFT ownership back to seller in DB
+    const res = await pool.query(
+      `SELECT nft_token_id, seller FROM auctions WHERE auction_id = $1`,
+      [Number(auctionId)]
+    );
+    if (res.rows.length > 0) {
+      const { nft_token_id, seller } = res.rows[0];
+      await pool.query(
+        `UPDATE nfts SET owner = $1 WHERE token_id = $2`,
+        [seller.toLowerCase(), Number(nft_token_id)]
+      );
+      console.log(`   🖼️ NFT #${nft_token_id} owner updated back to seller: ${seller}`);
+    }
 
     console.log(`   ⚖️ DisputeOpened for Auction #${auctionId} by ${initiator}`);
   } catch (err) {
@@ -744,10 +787,11 @@ async function handleDisputeCreated(event: any): Promise<void> {
          tx_hash, block_number
        )
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-       ON CONFLICT (dispute_id) DO UPDATE SET
+       ON CONFLICT (auction_id) DO UPDATE SET
+         dispute_id = EXCLUDED.dispute_id,
          phase = EXCLUDED.phase,
-         buyer_evidence_ipfs = EXCLUDED.buyer_evidence_ipfs,
-         seller_evidence_ipfs = EXCLUDED.seller_evidence_ipfs,
+         buyer_evidence_ipfs = COALESCE(EXCLUDED.buyer_evidence_ipfs, disputes.buyer_evidence_ipfs),
+         seller_evidence_ipfs = COALESCE(EXCLUDED.seller_evidence_ipfs, disputes.seller_evidence_ipfs),
          evidence_deadline = EXCLUDED.evidence_deadline,
          commit_deadline = EXCLUDED.commit_deadline,
          reveal_deadline = EXCLUDED.reveal_deadline,
@@ -755,6 +799,8 @@ async function handleDisputeCreated(event: any): Promise<void> {
          seller_votes = EXCLUDED.seller_votes,
          abstain_count = EXCLUDED.abstain_count,
          resolved = EXCLUDED.resolved,
+         tx_hash = EXCLUDED.tx_hash,
+         block_number = EXCLUDED.block_number,
          updated_at = NOW()`,
       [
         Number(disputeId),
@@ -930,6 +976,50 @@ async function handleVoteRevealed(event: any): Promise<void> {
   }
 }
 
+async function handlePhaseAdvanced(event: any): Promise<void> {
+  const { disputeId, newPhase } = event.args;
+
+  try {
+    const disputeInfo = await publicClient.readContract({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
+      functionName: 'disputes',
+      args: [BigInt(disputeId)]
+    });
+
+    const phaseMap: Record<number, string> = {
+      0: 'EVIDENCE',
+      1: 'COMMIT',
+      2: 'REVEAL',
+      3: 'RESOLVED'
+    };
+
+    const phaseStr = phaseMap[Number(newPhase)] || 'EVIDENCE';
+    const commitDeadline = disputeInfo[8];
+    const revealDeadline = disputeInfo[9];
+
+    await pool.query(
+      `UPDATE disputes 
+       SET 
+         phase = $1, 
+         commit_deadline = $2,
+         reveal_deadline = $3,
+         updated_at = NOW() 
+       WHERE dispute_id = $4`,
+      [
+        phaseStr,
+        commitDeadline ? new Date(Number(commitDeadline) * 1000).toISOString() : null,
+        revealDeadline ? new Date(Number(revealDeadline) * 1000).toISOString() : null,
+        Number(disputeId)
+      ]
+    );
+
+    console.log(`   🔔 PhaseAdvanced synced — Dispute #${disputeId} new phase: ${phaseStr}`);
+  } catch (err) {
+    console.error(`   ❌ Error saving PhaseAdvanced #${disputeId}:`, err);
+  }
+}
+
 async function handleDisputeResolved(event: any): Promise<void> {
   const { disputeId, winner, buyerVotes, sellerVotes, abstainCount } = event.args;
 
@@ -961,7 +1051,7 @@ async function handleDisputeResolved(event: any): Promise<void> {
     const res = await pool.query(`SELECT auction_id, buyer, seller FROM disputes WHERE dispute_id = $1`, [Number(disputeId)]);
     if (res.rows.length > 0) {
       const { auction_id, buyer, seller } = res.rows[0];
-      
+
       // Đánh dấu đấu giá là RESOLVED
       await pool.query(`UPDATE auctions SET phase = 'RESOLVED' WHERE auction_id = $1`, [auction_id]);
 
@@ -999,7 +1089,7 @@ async function handleJurorStaked(event: any): Promise<void> {
     );
     await logUserTransaction(txHash, juror, 'JUROR_STAKE', amount, false);
     await recalculateReputation(jurorAddress);
-    console.log(`   🛡️ JurorStaked synced: ${jurorAddress} staked +${Number(amount)/1e18} ADF`);
+    console.log(`   🛡️ JurorStaked synced: ${jurorAddress} staked +${Number(amount) / 1e18} ADF`);
   } catch (err) {
     console.error(`   ❌ Error saving JurorStaked:`, err);
   }
@@ -1019,7 +1109,7 @@ async function handleJurorUnstaked(event: any): Promise<void> {
     );
     await logUserTransaction(txHash, juror, 'JUROR_UNSTAKE', amount, true);
     await recalculateReputation(jurorAddress);
-    console.log(`   🛡️ JurorUnstaked synced: ${jurorAddress} unstaked -${Number(amount)/1e18} ADF`);
+    console.log(`   🛡️ JurorUnstaked synced: ${jurorAddress} unstaked -${Number(amount) / 1e18} ADF`);
   } catch (err) {
     console.error(`   ❌ Error saving JurorUnstaked:`, err);
   }
@@ -1031,7 +1121,7 @@ async function handleJurorRewarded(event: any): Promise<void> {
 
   try {
     const jurorAddress = juror.toLowerCase();
-    
+
     // 1. Cập nhật số dư stake trong profile
     await pool.query(
       `UPDATE user_profiles 
@@ -1054,7 +1144,7 @@ async function handleJurorRewarded(event: any): Promise<void> {
 
     await logUserTransaction(txHash, juror, 'JUROR_REWARD', amount, true);
     await recalculateReputation(jurorAddress);
-    console.log(`   🎁 JurorRewarded synced: ${jurorAddress} rewarded +${Number(amount)/1e18} ADF`);
+    console.log(`   🎁 JurorRewarded synced: ${jurorAddress} rewarded +${Number(amount) / 1e18} ADF`);
   } catch (err) {
     console.error(`   ❌ Error saving JurorRewarded:`, err);
   }
@@ -1066,7 +1156,7 @@ async function handleJurorPenalized(event: any): Promise<void> {
 
   try {
     const jurorAddress = juror.toLowerCase();
-    
+
     // 1. Cập nhật số dư stake trong profile
     await pool.query(
       `UPDATE user_profiles 
@@ -1089,7 +1179,7 @@ async function handleJurorPenalized(event: any): Promise<void> {
 
     await logUserTransaction(txHash, juror, 'JUROR_PENALTY', amount, false);
     await recalculateReputation(jurorAddress);
-    console.log(`   🔨 JurorPenalized synced: ${jurorAddress} penalized -${Number(amount)/1e18} ADF`);
+    console.log(`   🔨 JurorPenalized synced: ${jurorAddress} penalized -${Number(amount) / 1e18} ADF`);
   } catch (err) {
     console.error(`   ❌ Error saving JurorPenalized:`, err);
   }
@@ -1107,7 +1197,7 @@ async function logUserTransaction(
   try {
     const amountDec = Number(amountRaw) / 1e18;
     const balanceChange = `${isPositive ? '+' : '-'}${amountDec.toFixed(2)} ADF`;
-    
+
     await pool.query(
       `INSERT INTO user_transactions (tx_hash, user_address, tx_type, amount, balance_change)
        VALUES ($1, $2, $3, $4, $5)
@@ -1123,7 +1213,7 @@ async function handleWithdraw(event: any): Promise<void> {
   const { user, amount } = event.args;
   const txHash = event.transactionHash;
   await logUserTransaction(txHash, user, 'WITHDRAW', amount, true);
-  console.log(`   💸 Withdraw synced: ${user} withdrew +${Number(amount)/1e18} ADF`);
+  console.log(`   💸 Withdraw synced: ${user} withdrew +${Number(amount) / 1e18} ADF`);
 }
 
 async function handleSellerDeposited(event: any): Promise<void> {
@@ -1150,7 +1240,7 @@ async function handleEscrowReleased(event: any): Promise<void> {
   const { auctionId, receiver, amount } = event.args;
   const txHash = event.transactionHash;
   await logUserTransaction(txHash, receiver, 'ESCROW_RELEASE', amount, true);
-  console.log(`   💸 EscrowReleased synced: ${receiver} received +${Number(amount)/1e18} ADF`);
+  console.log(`   💸 EscrowReleased synced: ${receiver} received +${Number(amount) / 1e18} ADF`);
 }
 
 async function handleDepositsBurned(event: any): Promise<void> {
@@ -1171,24 +1261,24 @@ async function handleDepositsBurned(event: any): Promise<void> {
 async function handleTransfer(event: any): Promise<void> {
   const { from, to, value } = event.args;
   const txHash = event.transactionHash;
-  
+
   const fromAddr = from.toLowerCase();
   const toAddr = to.toLowerCase();
   const adfPoolAddr = CONTRACT_ADDRESSES.ADF_Pool.toLowerCase();
   const exchangeAddr = CONTRACT_ADDRESSES.AuctionExchange.toLowerCase();
   const nullAddr = '0x0000000000000000000000000000000000000000';
-  
+
   if (fromAddr === adfPoolAddr || fromAddr === exchangeAddr || toAddr === adfPoolAddr || toAddr === exchangeAddr) {
     return; // Ignore contract interactions (already captured by other events)
   }
-  
+
   if (fromAddr !== nullAddr) {
     await logUserTransaction(txHash, from, 'TRANSFER_SEND', value, false);
   }
   if (toAddr !== nullAddr) {
     await logUserTransaction(txHash, to, 'TRANSFER_RECEIVE', value, true);
   }
-  console.log(`   💸 Transfer synced: P2P transfer ${Number(value)/1e18} ADF from ${fromAddr} to ${toAddr}`);
+  console.log(`   💸 Transfer synced: P2P transfer ${Number(value) / 1e18} ADF from ${fromAddr} to ${toAddr}`);
 }
 
 // ---- Watch: Lắng nghe event realtime ----
@@ -1368,6 +1458,18 @@ function watchEvents(): void {
     publicClient.watchContractEvent({
       address: CONTRACT_ADDRESSES.DisputeResolution,
       abi: DISPUTE_RESOLUTION_ABI,
+      eventName: 'PhaseAdvanced',
+      onLogs: (logs) => {
+        for (const log of logs) {
+          handlePhaseAdvanced(log);
+          updateSyncBlock(log.blockNumber);
+        }
+      },
+    });
+
+    publicClient.watchContractEvent({
+      address: CONTRACT_ADDRESSES.DisputeResolution,
+      abi: DISPUTE_RESOLUTION_ABI,
       eventName: 'DisputeResolved',
       onLogs: (logs) => {
         for (const log of logs) {
@@ -1520,10 +1622,10 @@ export async function startEventListener(): Promise<void> {
   console.log('\n🔗 Starting Blockchain Event Listener...');
   console.log(`   Contract Exchange: ${CONTRACT_ADDRESSES.AuctionExchange}`);
   console.log(`   Contract Dispute: ${CONTRACT_ADDRESSES.DisputeResolution}`);
-  
+
   // Catchup first, then watch
   await catchupEvents();
   watchEvents();
-  
+
   console.log('   ✅ Event Listener is running\n');
 }

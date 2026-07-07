@@ -6,7 +6,7 @@
 
 import { useReadContract } from 'wagmi';
 import { type Address } from 'viem';
-import { ADF_ABI, ADF_NFT_ABI, AUCTION_EXCHANGE_ABI, CONTRACT_ADDRESSES } from '../config/contracts';
+import { ADF_ABI, ADF_NFT_ABI, AUCTION_EXCHANGE_ABI, CONTRACT_ADDRESSES, DISPUTE_RESOLUTION_ABI } from '../config/contracts';
 
 /** Đọc ADF.balanceOf(address) — Số dư ADF của một địa chỉ */
 export function useADFBalance(address?: Address) {
@@ -74,6 +74,34 @@ export function useNFTApproved(tokenId?: bigint) {
     query: {
       enabled: tokenId !== undefined,
       refetchInterval: 5_000,
+    },
+  });
+}
+
+/** Đọc DisputeResolution.jurorStakes(address) — Số lượng ADF đã stake của một địa chỉ */
+export function useJurorStakes(address?: Address) {
+  return useReadContract({
+    address: CONTRACT_ADDRESSES.DisputeResolution,
+    abi: DISPUTE_RESOLUTION_ABI,
+    functionName: 'jurorStakes',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+      refetchInterval: 5_000,
+    },
+  });
+}
+
+/** Đọc ADF.allowance(owner, DisputeResolution) — Số ADF đã duyệt cho toà án */
+export function useADFAllowanceForDispute(owner?: Address) {
+  return useReadContract({
+    address: CONTRACT_ADDRESSES.ADF,
+    abi: ADF_ABI,
+    functionName: 'allowance',
+    args: owner ? [owner, CONTRACT_ADDRESSES.DisputeResolution] : undefined,
+    query: {
+      enabled: !!owner,
+      refetchInterval: 10_000,
     },
   });
 }

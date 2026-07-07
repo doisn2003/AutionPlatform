@@ -81,53 +81,146 @@ export const getDisputesForJuror = async (req: Request, res: Response) => {
 };
 
 /**
- * Tải file bằng chứng nộp phạt lên Pinata IPFS
+ * Tải file bằng chứng nộp phạt lên Pinata IPFS (Hỗ trợ nhiều hình ảnh & Lưu database off-chain)
  */
 export const uploadEvidence = async (req: Request, res: Response) => {
-  try {
-    const file = req.file;
-    if (!file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
+  const files = req.files as Express.Multer.File[];
+  const { description, auctionId, initiator } = req.body;
 
-    const PINATA_API_KEY = process.env.PINATA_API_KEY;
-    const PINATA_SECRET_API_KEY = process.env.PINATA_SECRET_API_KEY;
+  if (!files || files.length === 0) {
+    return res.status(400).json({ error: 'No files uploaded' });
+  }
+  if (!description) {
+    return res.status(400).json({ error: 'Description is required' });
+  }
+  if (!auctionId || isNaN(parseInt(auctionId as string, 10))) {
+    return res.status(400).json({ error: 'Invalid auction ID' });
+  }
+  if (!initiator || !initiator.startsWith('0x')) {
+    return res.status(400).json({ error: 'Invalid initiator address' });
+  }
 
-    if (!PINATA_API_KEY || !PINATA_SECRET_API_KEY) {
+  const PINATA_API_KEY = process.env.PINATA_API_KEY;
+  const PINATA_SECRET_API_KEY = process.env.PINATA_SECRET_API_KEY;
+
+  if (!PINATA_API_KEY || !PINATA_SECRET_API_KEY) {
+    // Dọn dẹp file tạm
+    for (const file of files) {
       if (fs.existsSync(file.path)) {
         fs.unlinkSync(file.path);
       }
-      return res.status(500).json({ error: 'Pinata keys are not configured' });
+    }
+    return res.status(500).json({ error: 'Pinata keys are not configured' });
+  }
+
+  try {
+    const ipfsUrls: string[] = [];
+
+    // 1. Tải từng file hình ảnh lên Pinata IPFS
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('file', fs.createReadStream(file.path));
+
+      const uploadResponse = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', formData, {
+        headers: {
+          'Content-Type': `multipart/form-data; boundary=${formData.getBoundary()}`,
+          pinata_api_key: PINATA_API_KEY,
+          pinata_secret_api_key: PINATA_SECRET_API_KEY,
+        },
+      });
+
+      // Xoá file tạm
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+
+      ipfsUrls.push(`ipfs://${uploadResponse.data.IpfsHash}`);
     }
 
-    // Gửi tệp lên Pinata IPFS
-    const formData = new FormData();
-    formData.append('file', fs.createReadStream(file.path));
+    // 2. Tạo JSON metadata chứa description và mảng hình ảnh
+    const metadata = {
+      description,
+      images: ipfsUrls,
+      timestamp: new Date().toISOString()
+    };
 
-    const response = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', formData, {
+    const metadataResponse = await axios.post('https://api.pinata.cloud/pinning/pinJSONToIPFS', metadata, {
       headers: {
-        'Content-Type': `multipart/form-data; boundary=${formData.getBoundary()}`,
         pinata_api_key: PINATA_API_KEY,
         pinata_secret_api_key: PINATA_SECRET_API_KEY,
       },
     });
 
-    // Xoá tệp tạm cục bộ
-    if (fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
+    const metadataIpfsHash = `ipfs://${metadataResponse.data.IpfsHash}`;
+
+    // 3. Lưu trữ song song vào Database off-chain
+    const numericAuctionId = parseInt(auctionId as string, 10);
+    
+    // Lấy thông tin người mua, người bán từ bảng auctions
+    const auctionQuery = await pool.query(
+      `SELECT seller, current_top_bidder FROM auctions WHERE auction_id = $1`,
+      [numericAuctionId]
+    );
+
+    if (auctionQuery.rows.length === 0) {
+      return res.status(404).json({ error: 'Auction not found' });
     }
 
-    const ipfsHash = `ipfs://${response.data.IpfsHash}`;
+    const { seller, current_top_bidder: buyer } = auctionQuery.rows[0];
+    const isBuyerInitiator = initiator.toLowerCase() === buyer.toLowerCase();
+    
+    // Tạo dispute_id tạm âm (ví dụ: -auctionId) để tránh trùng lặp UNIQUE constraint
+    const tempDisputeId = -numericAuctionId;
+
+    if (isBuyerInitiator) {
+      await pool.query(
+        `INSERT INTO disputes (
+           dispute_id, auction_id, buyer, seller, initiator, 
+           buyer_evidence_ipfs, buyer_description, buyer_images,
+           phase
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'EVIDENCE')
+         ON CONFLICT (auction_id) DO UPDATE SET
+           buyer_evidence_ipfs = EXCLUDED.buyer_evidence_ipfs,
+           buyer_description = EXCLUDED.buyer_description,
+           buyer_images = EXCLUDED.buyer_images,
+           updated_at = NOW()`,
+        [tempDisputeId, numericAuctionId, buyer.toLowerCase(), seller.toLowerCase(), initiator.toLowerCase(), metadataIpfsHash, description, ipfsUrls]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO disputes (
+           dispute_id, auction_id, buyer, seller, initiator, 
+           seller_evidence_ipfs, seller_description, seller_images,
+           phase
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'EVIDENCE')
+         ON CONFLICT (auction_id) DO UPDATE SET
+           seller_evidence_ipfs = EXCLUDED.seller_evidence_ipfs,
+           seller_description = EXCLUDED.seller_description,
+           seller_images = EXCLUDED.seller_images,
+           updated_at = NOW()`,
+        [tempDisputeId, numericAuctionId, buyer.toLowerCase(), seller.toLowerCase(), initiator.toLowerCase(), metadataIpfsHash, description, ipfsUrls]
+      );
+    }
+
     res.status(200).json({
       success: true,
-      ipfsHash,
+      ipfsHash: metadataIpfsHash,
+      buyer_description: isBuyerInitiator ? description : null,
+      buyer_images: isBuyerInitiator ? ipfsUrls : null,
+      seller_description: !isBuyerInitiator ? description : null,
+      seller_images: !isBuyerInitiator ? ipfsUrls : null
     });
+
   } catch (error: any) {
     console.error('IPFS upload error:', error.response?.data || error.message);
     
-    // Đảm bảo xoá tệp tạm khi gặp lỗi
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    // Đảm bảo xoá sạch file tạm nếu gặp lỗi giữa chừng
+    for (const file of files) {
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
     }
     
     res.status(500).json({ error: error.message });

@@ -324,10 +324,25 @@ contract DisputeResolution is ReentrancyGuard, Ownable {
     function resolveDispute(uint256 _disputeId) external nonReentrant {
         Dispute storage dispute = disputes[_disputeId];
         
-        // 1. Đảm bảo tranh chấp đang ở pha REVEAL và đã hết hạn revealDeadline
-        require(block.timestamp > dispute.revealDeadline, "Reveal not ended");
         require(dispute.phase == DisputePhase.REVEAL, "Wrong phase");
         require(!dispute.resolved, "Already resolved");
+
+        // Kiểm tra xem tất cả trọng tài đã commit có đều đã reveal chưa
+        uint8 commitCount = 0;
+        uint8 revealCount = 0;
+        for (uint8 i = 0; i < NUM_JURORS; i++) {
+            if (dispute.hasCommitted[i]) {
+                commitCount++;
+                if (dispute.hasRevealed[i]) {
+                    revealCount++;
+                }
+            }
+        }
+
+        // Nếu chưa giải mã đủ số lượng đã commit, bắt buộc phải đợi hết hạn revealDeadline
+        if (revealCount < commitCount) {
+            require(block.timestamp > dispute.revealDeadline, "Reveal not ended");
+        }
         
         // 2. Đếm số Trọng tài không commit/reveal (Abstain)
         for (uint8 i = 0; i < NUM_JURORS; i++) {
@@ -403,6 +418,30 @@ contract DisputeResolution is ReentrancyGuard, Ownable {
         );
 
 
+    }
+
+    /// @notice Thực thi cơ chế đốt cọc của Lý thuyết trò chơi (Game Theory Escrow)
+    /// @dev Có thể được gọi bởi buyer hoặc seller của phiên tranh chấp
+    function triggerGameTheoryBurn(uint256 _disputeId) external {
+        Dispute storage dispute = disputes[_disputeId];
+        require(!dispute.resolved, "Already resolved");
+        
+        // Đảm bảo người gọi là buyer hoặc seller của tranh chấp
+        require(msg.sender == dispute.buyer || msg.sender == dispute.seller, "Not a party");
+        
+        dispute.resolved = true;
+        dispute.phase = DisputePhase.RESOLVED;
+        
+        // Gọi AuctionExchange thực hiện đốt cọc & trả NFT
+        auctionExchange.burnGameTheoryDeposits(dispute.auctionId);
+        
+        emit DisputeResolved(
+            _disputeId,
+            address(0),
+            0,
+            0,
+            0
+        );
     }
 
     // Helper kiểm tra ví trong danh sách trọng tài

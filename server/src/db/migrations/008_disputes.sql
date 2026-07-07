@@ -12,6 +12,10 @@ CREATE TABLE IF NOT EXISTS disputes (
   initiator VARCHAR(42) NOT NULL,
   buyer_evidence_ipfs TEXT,
   seller_evidence_ipfs TEXT,
+  buyer_description TEXT,
+  buyer_images TEXT[],
+  seller_description TEXT,
+  seller_images TEXT[],
   selected_jurors VARCHAR(42)[] DEFAULT '{}',
   phase VARCHAR(20) DEFAULT 'EVIDENCE', -- 'EVIDENCE' | 'COMMIT' | 'REVEAL' | 'RESOLVED'
   evidence_deadline TIMESTAMPTZ,

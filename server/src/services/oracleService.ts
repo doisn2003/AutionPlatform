@@ -7,14 +7,20 @@ export async function assignJurorsAutomatically(disputeId: number, auctionId: nu
   try {
     // 1. Kiểm tra trạng thái tranh chấp trong DB trước để tránh gán lại hoặc gán sai pha
     const disputeDbRes = await pool.query(
-      `SELECT phase, selected_jurors FROM disputes WHERE dispute_id = $1`,
+      `SELECT phase, selected_jurors, evidence_deadline FROM disputes WHERE dispute_id = $1`,
       [disputeId]
     );
 
     if (disputeDbRes.rows.length > 0) {
-      const { phase, selected_jurors } = disputeDbRes.rows[0];
+      const { phase, selected_jurors, evidence_deadline } = disputeDbRes.rows[0];
       if (phase !== 'EVIDENCE' || (selected_jurors && selected_jurors.length === 5)) {
         console.log(`   ℹ️ Oracle: Dispute #${disputeId} is already assigned or resolved (Phase: ${phase}). Skipping.`);
+        return;
+      }
+
+      // Đảm bảo qua hạn nộp bằng chứng mới gán Trọng tài
+      if (evidence_deadline && new Date(evidence_deadline).getTime() > Date.now()) {
+        console.log(`   ℹ️ Oracle: Dispute #${disputeId} evidence deadline (${evidence_deadline}) has not passed yet. Waiting.`);
         return;
       }
     }

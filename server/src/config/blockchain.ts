@@ -266,7 +266,6 @@ export const ADF_POOL_ABI = [
 ] as const;
 
 export const DISPUTE_RESOLUTION_ABI = [
-  // Events
   {
     type: 'event',
     name: 'DisputeCreated',
@@ -274,6 +273,14 @@ export const DISPUTE_RESOLUTION_ABI = [
       { name: 'disputeId', type: 'uint256', indexed: true },
       { name: 'auctionId', type: 'uint256', indexed: false },
       { name: 'initiator', type: 'address', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'PhaseAdvanced',
+    inputs: [
+      { name: 'disputeId', type: 'uint256', indexed: true },
+      { name: 'newPhase', type: 'uint8', indexed: false },
     ],
   },
   {
@@ -370,11 +377,39 @@ export const DISPUTE_RESOLUTION_ABI = [
   },
   {
     type: 'function',
+    name: 'jurorStakes',
+    inputs: [{ name: '', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'stakeForJuror',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
     name: 'setJurors',
     inputs: [
       { name: '_disputeId', type: 'uint256' },
       { name: '_jurors', type: 'address[5]' },
     ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'checkAndUpdatePhase',
+    inputs: [{ name: '_disputeId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'resolveDispute',
+    inputs: [{ name: '_disputeId', type: 'uint256' }],
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -389,5 +424,25 @@ export const ADF_ABI = [
       { name: 'to', type: 'address', indexed: true },
       { name: 'value', type: 'uint256', indexed: false },
     ],
+  },
+  {
+    type: 'function',
+    name: 'transfer',
+    inputs: [
+      { name: 'recipient', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'approve',
+    inputs: [
+      { name: 'spender', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ type: 'bool' }],
+    stateMutability: 'nonpayable',
   },
 ] as const;

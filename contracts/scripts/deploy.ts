@@ -80,7 +80,37 @@ async function main() {
   await disputeResolution.write.setAdfPool([adfPool.address], { account: deployer.account });
   // 5. DisputeResolution.setServerOracle(deployer)
   await disputeResolution.write.setServerOracle([deployer.account.address], { account: deployer.account });
+  // 6. DisputeResolution.setDurations(evidence, commit, reveal) -> 180 giây (3 phút) mỗi pha phục vụ demo thoải mái
+  await disputeResolution.write.setDurations([180n, 180n, 180n], { account: deployer.account });
   console.log("   ✅ Cross-linkings completed successfully!\n");
+
+  // ---- Bước 6: Seed 5 Trọng Tài (Jurors) — Accounts #16-#20 (index 15-19) ----
+  console.log("⚖️ [6/6] Seeding 5 Jurors (Accounts #16-#20)...");
+  const allWallets = await viem.getWalletClients();
+  const jurorWallets = allWallets.slice(15, 20); // index 15, 16, 17, 18, 19
+  const stakeAmount = 500n * 10n ** BigInt(decimals); // 500 ADF
+
+  const jurorAddresses: string[] = [];
+
+  for (let i = 0; i < jurorWallets.length; i++) {
+    const juror = jurorWallets[i]!;
+    const jurorAddr = juror.account.address;
+    jurorAddresses.push(jurorAddr);
+
+    // 1. Juror gọi faucet 5 lần để nhận 500 ADF (100 ADF/lần)
+    for (let f = 0; f < 5; f++) {
+      await adf.write.faucet({ account: juror.account });
+    }
+
+    // 2. Juror approve DisputeResolution contract
+    await adf.write.approve([disputeResolution.address, stakeAmount], { account: juror.account });
+
+    // 3. Juror stake 500 ADF
+    await disputeResolution.write.stakeForJuror([stakeAmount], { account: juror.account });
+
+    console.log(`   ✅ Juror #${i + 1} (Account #${15 + i + 1}): ${jurorAddr} — Staked 500 ADF`);
+  }
+  console.log(`   🎯 5 Jurors seeded successfully!\n`);
 
   // ---- Ghi địa chỉ ra file ----
   const addresses = {
@@ -90,6 +120,7 @@ async function main() {
     AuctionExchange: auctionExchange.address,
     DisputeResolution: disputeResolution.address,
     deployer: deployer.account.address,
+    jurors: jurorAddresses,
     network: hre.network.name,
     deployedAt: new Date().toISOString(),
   };

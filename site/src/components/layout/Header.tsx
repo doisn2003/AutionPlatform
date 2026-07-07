@@ -41,6 +41,7 @@ const Header: React.FC = () => {
     { name: 'Trang chủ', path: '/' },
     { name: 'Đúc vật phẩm', path: '/mint' },
     { name: 'Giao dịch', path: '/transaction' },
+    { name: 'Bàn giao & Tranh chấp', path: '/dispute' },
     { name: 'Bảng xếp hạng uy tín', path: '/reputation' },
   ];
 

@@ -1,5 +1,7 @@
 import app from './app';
 import dotenv from 'dotenv';
+import http from 'node:http';
+import { initSocket } from './services/socketService';
 
 dotenv.config();
 
@@ -16,6 +18,13 @@ const startServer = async () => {
     console.log('✅ Connected to PostgreSQL Database');
     client.release();
 
+    // Create HTTP Server wrapping Express App
+    const server = http.createServer(app);
+
+    // Initialize Socket.io WebSocket Server
+    initSocket(server);
+    console.log('🔌 Socket.io server initialized');
+
     // Start Blockchain Event Listener (Viem)
     try {
       await startEventListener();
@@ -30,7 +39,7 @@ const startServer = async () => {
       console.warn('⚠️ Auction Cron failed to start:', (err as Error).message);
     }
     
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Server is running on http://localhost:${PORT}`);
     });
   } catch (error) {
@@ -40,5 +49,3 @@ const startServer = async () => {
 };
 
 startServer();
-
-// Trigger restart

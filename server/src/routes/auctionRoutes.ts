@@ -3,9 +3,12 @@
  */
 
 import { Router } from 'express';
-import { getAuctions, getAuctionById, getAuctionBids, updateAuctionCategory, updateAuctionCategoryByNft } from '../controllers/auctionController';
+import { getAuctions, getAuctionById, getAuctionBids, updateAuctionCategory, updateAuctionCategoryByNft, getUserEscrowAuctions } from '../controllers/auctionController';
 
 const router = Router();
+
+// GET /api/auctions/user/:address
+router.get('/user/:address', getUserEscrowAuctions);
 
 // GET /api/auctions?status=active|ended|all
 router.get('/', getAuctions);

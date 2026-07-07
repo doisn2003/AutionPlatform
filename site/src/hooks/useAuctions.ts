@@ -27,6 +27,13 @@ export interface AuctionFromAPI {
   category_icon?: string;
   category_code?: string;
   asset_type?: string;
+  dispute_type?: string;
+  escrow_duration?: number;
+  phase?: string;
+  escrow_deadline?: string | null;
+  token_uri?: string;
+  images?: string | string[];
+  attributes?: any;
 }
 
 interface AuctionAPIResponse {

@@ -11,7 +11,7 @@ router.get('/:id', getDisputeDetail);
 // Route lấy danh sách vụ tranh chấp của một trọng tài
 router.get('/juror/:address', getDisputesForJuror);
 
-// Route tải lên bằng chứng tài liệu/hình ảnh lên IPFS
-router.post('/evidence', upload.single('file'), uploadEvidence);
+// Route tải lên bằng chứng tài liệu/hình ảnh lên IPFS (nhiều tệp)
+router.post('/evidence', upload.array('files', 10), uploadEvidence);
 
 export default router;

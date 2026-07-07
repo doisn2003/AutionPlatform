@@ -70,17 +70,23 @@ const BidModal: React.FC<BidModalProps> = ({ auction, onClose }) => {
   const minimumBid = currentBid > 0 ? currentBid + minIncrement : reservePrice;
   const userBalance = balance !== undefined ? parseFloat(formatUnits(balance, 18)) : 0;
 
+  // Game Theory cọc của buyer bằng đúng reservePrice
+  const isGameTheory = auction.dispute_type === 'GAME_THEORY_ESCROW';
+  const buyerDepositFloat = isGameTheory ? reservePrice : 0;
+  const buyerDepositWei = isGameTheory ? BigInt(auction.reserve_price) : 0n;
+
   const inputAmount = parseFloat(bidAmount) || 0;
   const isValidAmount = inputAmount >= minimumBid;
-  const hasEnoughBalance = inputAmount <= userBalance;
+  const hasEnoughBalance = (inputAmount + buyerDepositFloat) <= userBalance;
 
   const handleSubmit = () => {
     if (!isValidAmount || !hasEnoughBalance) return;
 
     const amountWei = parseUnits(bidAmount, 18);
+    const totalRequiredWei = amountWei + buyerDepositWei;
 
-    // Kiểm tra allowance
-    if (allowance !== undefined && allowance < amountWei) {
+    // Kiểm tra allowance gồm số tiền bid + tiền cọc bảo đảm
+    if (allowance !== undefined && allowance < totalRequiredWei) {
       setStep('approving');
       approve();
     } else {
@@ -156,6 +162,16 @@ const BidModal: React.FC<BidModalProps> = ({ auction, onClose }) => {
                   <span className={styles.errorText}>Không đủ số dư</span>
                 )}
               </div>
+
+              {isGameTheory && (
+                <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(242, 202, 80, 0.05)', border: '1px solid rgba(242, 202, 80, 0.1)', borderRadius: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem', color: 'var(--color-primary)' }}>info</span>
+                  <div>
+                    Phiên này yêu cầu ký quỹ cọc thêm <strong className="text-gold">{reservePrice} ADF</strong>. 
+                    Tổng số ADF cần có: <strong className="text-gold">{(inputAmount + buyerDepositFloat).toFixed(2)} ADF</strong>.
+                  </div>
+                </div>
+              )}
             </div>
 
             <button

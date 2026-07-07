@@ -5,6 +5,8 @@ import Mint from './pages/Mint';
 import Transaction from './pages/Transaction';
 import Profile from './pages/Profile';
 import Reputation from './pages/Reputation';
+import Auction from './pages/Auction';
+import Dispute from './pages/Dispute';
 import MockHome from './pages/mock/MockHome';
 import MockNFTDetail from './pages/mock/MockNFTDetail';
 import MockAuctionRoom from './pages/mock/MockAuctionRoom';
@@ -20,6 +22,9 @@ function App() {
         <Route path="/transaction" element={<Transaction />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/reputation" element={<Reputation />} />
+        <Route path="/auction/:id" element={<Auction />} />
+        <Route path="/dispute" element={<Dispute />} />
+        <Route path="/dispute/:id" element={<Dispute />} />
         
         {/* Mock Routes for Thesis screenshots */}
         <Route path="/mock-home" element={<MockHome />} />
