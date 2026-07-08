@@ -11,6 +11,6 @@ contract ADF is ERC20 {
 
     // Ham Faucet cho phep User nhan 10 ADF (nhan thoai mai khong gioi han)
     function faucet() external {
-        _mint(msg.sender, 10 * 10 ** decimals());
+        _mint(msg.sender, 100 * 10 ** decimals());
     }
 }

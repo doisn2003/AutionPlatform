@@ -19,14 +19,10 @@ export const recalculateReputation = async (walletAddress: string): Promise<void
   try {
     await ensureUserProfileExists(address);
 
-    // Fetch stats
+    // Fetch current reputation score and stake
     const result = await pool.query(
       `SELECT 
-         total_bids_placed, 
-         total_bids_won, 
-         total_nfts_minted, 
-         successful_deliveries, 
-         total_disputes_lost,
+         reputation_score, 
          adf_staked_for_juror
        FROM user_profiles
        WHERE wallet_address = $1`,
@@ -36,53 +32,32 @@ export const recalculateReputation = async (walletAddress: string): Promise<void
     if (result.rows.length === 0) return;
 
     const row = result.rows[0];
-    const totalBidsPlaced = parseInt(row.total_bids_placed) || 0;
-    const totalBidsWon = parseInt(row.total_bids_won) || 0;
-    const totalNftsMinted = parseInt(row.total_nfts_minted) || 0;
-    const successfulDeliveries = parseInt(row.successful_deliveries) || 0;
-    const totalDisputesLost = parseInt(row.total_disputes_lost) || 0;
+    const reputationScore = parseFloat(row.reputation_score) || 0;
     
     // adf_staked_for_juror represents wei as a string
     const stakedWeiStr = row.adf_staked_for_juror || '0';
-    const stakedADF = parseFloat(stakedWeiStr) / 1e18;
 
-    // Formula:
-    // Reputation = 1 * B_placed + 5 * B_won + 3 * N_minted + 10 * D_success + 0.01 * S_staked - 20 * D_lost
-    const reputationScore = Math.max(0, (
-      totalBidsPlaced * 1 +
-      totalBidsWon * 5 +
-      totalNftsMinted * 3 +
-      successfulDeliveries * 10 +
-      stakedADF * 0.01 -
-      totalDisputesLost * 20
-    ));
-
-    // Juror eligibility rules:
+    // Juror eligibility rules (Simplified):
     // 1. reputation_score >= 50
     // 2. adf_staked_for_juror >= 500 ADF (500 * 1e18 wei)
-    // 3. total_disputes_lost == 0
-    // 4. total_bids_placed >= 5
     const stakedADFBigInt = BigInt(stakedWeiStr);
     const minStaked = 500n * 10n ** 18n; // 500 ADF
     const jurorEligible = 
       reputationScore >= 50 &&
-      stakedADFBigInt >= minStaked &&
-      totalDisputesLost === 0 &&
-      totalBidsPlaced >= 5;
+      stakedADFBigInt >= minStaked;
 
     await pool.query(
       `UPDATE user_profiles
        SET 
-         reputation_score = $1,
-         juror_eligible = $2,
+         juror_eligible = $1,
          updated_at = NOW()
-       WHERE wallet_address = $3`,
-      [reputationScore, jurorEligible, address]
+       WHERE wallet_address = $2`,
+      [jurorEligible, address]
     );
 
-    console.log(`📊 Recalculated reputation for ${address}: Score = ${reputationScore.toFixed(2)}, Juror Eligible = ${jurorEligible}`);
+    console.log(`📊 Updated eligibility for ${address}: Score = ${reputationScore.toFixed(2)}, Juror Eligible = ${jurorEligible}`);
   } catch (error) {
-    console.error(`Error recalculating reputation for ${address}:`, error);
+    console.error(`Error updating reputation eligibility for ${address}:`, error);
   }
 };
 

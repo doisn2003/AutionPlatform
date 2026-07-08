@@ -13,6 +13,7 @@ export const CONTRACT_ADDRESSES = {
   ADF_Pool: (import.meta.env.VITE_ADF_POOL_ADDRESS || '0x') as Address,
   ADF_NFT: (import.meta.env.VITE_ADF_NFT_ADDRESS || '0x') as Address,
   AuctionExchange: (import.meta.env.VITE_AUCTION_EXCHANGE_ADDRESS || '0x') as Address,
+  DisputeResolution: (import.meta.env.VITE_DISPUTE_RESOLUTION_ADDRESS || '0x') as Address,
 };
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
@@ -110,6 +111,13 @@ export const ADF_NFT_ABI = [
       { name: 'tokenId', type: 'uint256', indexed: true },
     ],
   },
+  {
+    type: 'function',
+    name: 'burn',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
 ] as const;
 
 // ---- AuctionExchange ABI ----
@@ -167,4 +175,74 @@ export const ADF_POOL_ABI = [
     outputs: [{ name: '', type: 'uint256' }],
     stateMutability: 'view',
   },
+] as const;
+
+// ---- DisputeResolution ABI ----
+export const DISPUTE_RESOLUTION_ABI = [
+  {
+    type: 'function',
+    name: 'triggerGameTheoryBurn',
+    inputs: [{ name: '_disputeId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'stakeForJuror',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'unstakeJuror',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'jurorStakes',
+    inputs: [{ name: '', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'commitVote',
+    inputs: [
+      { name: '_disputeId', type: 'uint256' },
+      { name: '_commitHash', type: 'bytes32' }
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'revealVote',
+    inputs: [
+      { name: '_disputeId', type: 'uint256' },
+      { name: '_vote', type: 'uint8' },
+      { name: '_salt', type: 'string' }
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'resolveDispute',
+    inputs: [{ name: '_disputeId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'submitEvidence',
+    inputs: [
+      { name: '_disputeId', type: 'uint256' },
+      { name: '_evidenceIPFS', type: 'string' }
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  }
 ] as const;

@@ -51,5 +51,19 @@ contract ADF_NFT is ERC721, ERC721URIStorage, Ownable {
 
         return newItemId;
     }
+
+    /**
+     * @dev Đốt (hủy vĩnh viễn) một NFT.
+     * Chỉ chủ sở hữu hoặc địa chỉ đã được ủy quyền mới có thể gọi hàm này.
+     * @param tokenId ID của NFT cần đốt.
+     */
+    function burn(uint256 tokenId) public {
+        // Kiểm tra quyền sở hữu hoặc ủy quyền
+        require(
+            _isAuthorized(ownerOf(tokenId), msg.sender, tokenId),
+            "ADF_NFT: caller is not owner nor approved"
+        );
+        _burn(tokenId);
+    }
     
 }

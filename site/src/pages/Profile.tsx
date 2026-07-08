@@ -367,11 +367,11 @@ const Profile: React.FC = () => {
                 <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#fff', marginBottom: '0.75rem' }}>Tiêu chí ứng cử viên Juror:</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.875rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: reqRep ? '#22c55e' : '#64748b' }}>
-                    <span>1. Điểm uy tín $\ge 50$ (Hiện tại: {reputation.toFixed(1)})</span>
+                    <span>1. Điểm uy tín lớn hơn 50 (Hiện tại: {reputation.toFixed(1)})</span>
                     {reqRep ? <CheckCircle size={16} /> : <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '1px solid #64748b' }}></div>}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: reqStake ? '#22c55e' : '#64748b' }}>
-                    <span>2. Đã ký quỹ $\ge 500$ ADF (Đã stake: {stakedADF} ADF)</span>
+                    <span>2. Đã ký quỹ lớn hơn 500 ADF (Đã stake: {stakedADF} ADF)</span>
                     {reqStake ? <CheckCircle size={16} /> : <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '1px solid #64748b' }}></div>}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: reqRecord ? '#22c55e' : '#64748b' }}>
@@ -379,7 +379,7 @@ const Profile: React.FC = () => {
                     {reqRecord ? <CheckCircle size={16} /> : <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '1px solid #64748b' }}></div>}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: reqBids ? '#22c55e' : '#64748b' }}>
-                    <span>4. Đã tham gia $\ge 5$ lượt bid (Hiện tại: {bidsPlaced} lượt)</span>
+                    <span>4. Đã tham gia lớn hơn 5 lượt bid (Hiện tại: {bidsPlaced} lượt)</span>
                     {reqBids ? <CheckCircle size={16} /> : <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '1px solid #64748b' }}></div>}
                   </div>
                 </div>

@@ -33,11 +33,15 @@ describe("AuctionExchange v2", async function () {
         await nft.write.mintNFT(["ipfs://QmSellerNFT"], { account: seller.account });
         await nft.write.approve([auction.address, 1n], { account: seller.account });
 
-        await adf.write.faucet({ account: buyer1.account });
-        await adf.write.faucet({ account: buyer2.account });
-
         const decimals = await adf.read.decimals();
         const amountToApprove = 1000n * 10n ** BigInt(decimals); 
+
+        // Chuyển ADF từ owner sang seller và approve để làm cọc cho Game Theory
+        await adf.write.transfer([seller.account.address, amountToApprove], { account: owner.account });
+        await adf.write.approve([auction.address, amountToApprove], { account: seller.account });
+
+        await adf.write.faucet({ account: buyer1.account });
+        await adf.write.faucet({ account: buyer2.account });
         
         await adf.write.approve([auction.address, amountToApprove], { account: buyer1.account });
         await adf.write.approve([auction.address, amountToApprove], { account: buyer2.account });
@@ -166,9 +170,9 @@ describe("AuctionExchange v2", async function () {
             const nftOwner = await nft.read.ownerOf([1n]);
             assert.equal(nftOwner.toLowerCase(), buyer1.account.address.toLowerCase());
 
-            // Money available for seller
+            // Money available for seller (bid + sellerDeposit refund)
             const pendingReturnSeller = await auction.read.pendingReturns([seller.account.address]);
-            assert.equal(pendingReturnSeller, reservePrice);
+            assert.equal(pendingReturnSeller, reservePrice * 2n);
         });
     });
 });

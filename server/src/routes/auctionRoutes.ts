@@ -3,9 +3,12 @@
  */
 
 import { Router } from 'express';
-import { getAuctions, getAuctionById, getAuctionBids } from '../controllers/auctionController';
+import { getAuctions, getAuctionById, getAuctionBids, updateAuctionCategory, updateAuctionCategoryByNft, getUserEscrowAuctions } from '../controllers/auctionController';
 
 const router = Router();
+
+// GET /api/auctions/user/:address
+router.get('/user/:address', getUserEscrowAuctions);
 
 // GET /api/auctions?status=active|ended|all
 router.get('/', getAuctions);
@@ -15,5 +18,11 @@ router.get('/:id', getAuctionById);
 
 // GET /api/auctions/:id/bids
 router.get('/:id/bids', getAuctionBids);
+
+// PUT /api/auctions/:id/category
+router.put('/:id/category', updateAuctionCategory);
+
+// PUT /api/auctions/by-nft/:tokenId/category
+router.put('/by-nft/:tokenId/category', updateAuctionCategoryByNft);
 
 export default router;

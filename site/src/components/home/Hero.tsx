@@ -2,7 +2,6 @@
  * Hero — Banner chính trang chủ
  * 
  * Hiển thị featured auction (phiên có giá cao nhất đang active) từ server.
- * Fallback về mock data nếu chưa có phiên nào.
  */
 
 import React, { useEffect, useState } from 'react';

@@ -4,10 +4,23 @@ pragma solidity ^0.8.23;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract AuctionExchange is ReentrancyGuard {
+interface IDisputeResolution {
+    function createDispute(
+        uint256 _auctionId,
+        address _buyer,
+        address _seller,
+        address _initiator,
+        string calldata _evidenceIPFS,
+        uint8 _disputeType
+    ) external;
+}
+
+contract AuctionExchange is ReentrancyGuard, Ownable {
     IERC20 public adfToken;
     IERC721 public adfNFT;
+    address public disputeContract;
 
     enum AssetType {
         DIGITAL,
@@ -40,12 +53,14 @@ contract AuctionExchange is ReentrancyGuard {
         uint256 currentTopBid;
         bool active;
         
-        // MỚI: Danh mục & Escrow
+        // Danh mục & Escrow
         AssetType assetType;
         DisputeType disputeType;
         AuctionPhase phase;
         uint256 escrowDeadline;
         uint256 escrowDuration; // Luu thoi gian de tinh deadline luc endAuction
+        uint256 sellerDeposit;
+        uint256 buyerDeposit;
     }
 
     uint256 private auctionIdCounter;
@@ -67,11 +82,25 @@ contract AuctionExchange is ReentrancyGuard {
     event EscrowStarted(uint256 indexed auctionId, address buyer, address seller, uint256 deadline);
     event DeliveryConfirmed(uint256 indexed auctionId);
     event DisputeOpened(uint256 indexed auctionId, address indexed initiator, string evidenceIPFS);
+    
+    // Các sự kiện bổ sung cho cọc và dispute
+    event SellerDeposited(uint256 indexed auctionId, uint256 amount);
+    event BuyerDeposited(uint256 indexed auctionId, uint256 amount);
+    event DepositsBurned(uint256 indexed auctionId, uint256 buyerAmount, uint256 sellerAmount);
+    event DisputeContractUpdated(address indexed newDisputeContract);
+    event EscrowReleased(uint256 indexed auctionId, address indexed receiver, uint256 amount);
 
-    constructor(address _adfToken, address _adfNFT) {
+    constructor(address _adfToken, address _adfNFT) Ownable(msg.sender) {
         adfToken = IERC20(_adfToken);
         adfNFT = IERC721(_adfNFT);
     } 
+
+    /// @notice Thiết lập địa chỉ DisputeResolution contract
+    function setDisputeContract(address _disputeContract) external onlyOwner {
+        require(_disputeContract != address(0), "Invalid dispute contract");
+        disputeContract = _disputeContract;
+        emit DisputeContractUpdated(_disputeContract);
+    }
 
     // [START] khoi tao phien dau gia
     function createAuction(
@@ -113,8 +142,17 @@ contract AuctionExchange is ReentrancyGuard {
             _disputeType,
             AuctionPhase.BIDDING,
             0,
-            _escrowDuration
+            _escrowDuration,
+            0, // sellerDeposit
+            0  // buyerDeposit
         );
+
+        // Thu tiền cọc của seller nếu chọn Game Thẻoy
+        if(_disputeType == DisputeType.GAME_THEORY_ESCROW) {
+            require(adfToken.transferFrom(msg.sender, address(this), _reservePrice), "Seller deposit failed");
+            auctions[currentAuctionId].sellerDeposit = _reservePrice;
+            emit SellerDeposited(currentAuctionId, _reservePrice);
+        }
 
         emit AuctionCreated(
             currentAuctionId, 
@@ -144,16 +182,34 @@ contract AuctionExchange is ReentrancyGuard {
         if(auction.currentTopBid > 0) require(_bidAmount >= auction.currentTopBid + auction.minBidIncrement, "Bid must be more than the previous top bid");
 
         // -----[EFFECTS]-----
-        // cat giu tien cua nguoi thua cuoc
+
+        // Hoàn cọc cho người bị outbid cũ
         if(auction.currentTopBidder != address(0)) {
-            pendingReturns[auction.currentTopBidder] += auction.currentTopBid;
+            uint256 refundAmount = auction.currentTopBid;
+            if(auction.disputeType == DisputeType.GAME_THEORY_ESCROW) {
+                refundAmount += auction.buyerDeposit;
+            }
+            pendingReturns[auction.currentTopBidder] += refundAmount;
         }
-        // ghi nhan nguoiw tra gia cao nhat moi
+
+        // Ghi nhận người trả giá cao nhất mới và số tiền bid
         auction.currentTopBidder = msg.sender;
         auction.currentTopBid = _bidAmount;
 
-        // -----[INTERACTIONS]-----
-        require(adfToken.transferFrom(msg.sender, address(this), _bidAmount), "Transfer ADF failed");
+        // cập nhật cọc của người bid mới
+        if(auction.disputeType == DisputeType.GAME_THEORY_ESCROW) {
+            auction.buyerDeposit = auction.reservePrice;
+        } else {
+            auction.buyerDeposit = 0;
+        }
+
+        // Thu tiền người bid mới (bid + cọc nếu chọn Game Theory)
+        uint256 totalTransfer = _bidAmount + auction.buyerDeposit;
+        require(adfToken.transferFrom(msg.sender, address(this), totalTransfer), "Transfer ADF failed");
+        if(auction.disputeType == DisputeType.GAME_THEORY_ESCROW) {
+            emit BuyerDeposited(_auctionId, auction.buyerDeposit);
+        }
+
         emit BidPlaced(_auctionId, msg.sender, _bidAmount);
     }
 
@@ -203,6 +259,16 @@ contract AuctionExchange is ReentrancyGuard {
         pendingReturns[auction.seller] += auction.currentTopBid;
         adfNFT.transferFrom(address(this), auction.currentTopBidder, auction.nftTokenId);
 
+        // Hoàn trả tiền cọc cho cả 2 bên (nếu có)
+        if(auction.sellerDeposit > 0) {
+            pendingReturns[auction.seller] += auction.sellerDeposit;
+            auction.sellerDeposit = 0;
+        }
+        if(auction.buyerDeposit > 0 ) {
+            pendingReturns[auction.currentTopBidder] += auction.buyerDeposit;
+            auction.buyerDeposit = 0;
+        }
+
         auction.phase = AuctionPhase.RESOLVED;
         emit DeliveryConfirmed(_auctionId);
     }
@@ -215,10 +281,19 @@ contract AuctionExchange is ReentrancyGuard {
             "Only buyer or seller"
         );
         require(block.timestamp <= auction.escrowDeadline, "Escrow deadline passed");
-
         auction.phase = AuctionPhase.DISPUTE_OPENED;
-
-        // Note: Logic gọi DisputeContract sẽ được hoàn thiện ở Module 3.
+        
+        // Gọi DisputeResolution contract để tạo phiên tranh chấp nếu đã deploy và set contract
+        if (disputeContract != address(0) && disputeContract.code.length > 0) {
+            IDisputeResolution(disputeContract).createDispute(
+                _auctionId,
+                auction.currentTopBidder,
+                auction.seller,
+                msg.sender,
+                evidenceIPFS,
+                uint8(auction.disputeType)
+            );
+        }
         
         emit DisputeOpened(_auctionId, msg.sender, evidenceIPFS);
     }
@@ -237,11 +312,110 @@ contract AuctionExchange is ReentrancyGuard {
         auction.active = false;
         auction.phase = AuctionPhase.CANCELED;
         
+        if(auction.sellerDeposit > 0) {
+            pendingReturns[auction.seller] += auction.sellerDeposit;
+            auction.sellerDeposit = 0;
+        }
         // Gui NFT ve cho nguoi ban
         adfNFT.transferFrom(address(this), auction.seller, auction.nftTokenId);
 
         // Emit su kien
         emit AuctionCanceled(_auctionId);
+    }
+
+    /// @notice Đốt toàn bộ tiền cọc và tiền bid của hai bên chuyển về địa chỉ 0x0
+    /// @dev Chỉ cho phép DisputeResolution contract gọi khi tranh chấp Game Theory xảy ra không tự hòa giải
+    function burnGameTheoryDeposits(uint256 _auctionId) external nonReentrant {
+        // chỉ disputeContract mới được quyền gọi hàm này
+        require(msg.sender == disputeContract, "Only DisputeResolution");
+        Auction storage auction = auctions[_auctionId];
+        
+        // Đảm bảo phiên đấu giá đang ở trạng thái tranh chấp (DISPUTE_OPENED) và loại tranh chấp là GAME_THEORY_ESCROW
+        require(auction.phase == AuctionPhase.DISPUTE_OPENED, "No dispute");
+        require(auction.disputeType == DisputeType.GAME_THEORY_ESCROW, "Wrong type");
+        
+        uint256 buyerBid = auction.currentTopBid;
+        uint256 sellerDep = auction.sellerDeposit;
+        uint256 buyerDep = auction.buyerDeposit;
+        uint256 totalBurn = buyerBid + sellerDep + buyerDep;
+        // Reset sellerDeposit và buyerDeposit của auction về 0
+        auction.sellerDeposit = 0;
+        auction.buyerDeposit = 0;
+        auction.phase = AuctionPhase.RESOLVED;
+        auction.active = false;
+
+        // Trả lại NFT về cho seller (vì NFT ở lại ví của hợp đồng, không bị đốt)
+        adfNFT.transferFrom(address(this), auction.seller, auction.nftTokenId);
+        // BURN tienf cojc
+        require(adfToken.transfer(address(0xdead), totalBurn), "Burn failed");
+
+        emit DepositsBurned(_auctionId, buyerBid + buyerDep, sellerDep);
+    }
+
+    /// @notice Buyer thắng tranh chấp → Hoàn tiền bid cho buyer + NFT về seller
+    function releaseEscrowToBuyer(uint256 _auctionId) external nonReentrant {
+        // Chỉ cho phép disputeContract gọi hàm này
+        require(msg.sender == disputeContract, "Only DisputeResolution");
+
+        Auction storage auction = auctions[_auctionId];
+
+        // Đảm bảo phiên đấu giá đang ở trạng thái tranh chấp (DISPUTE_OPENED)
+        require(auction.phase == AuctionPhase.DISPUTE_OPENED, "No dispute");
+        
+       // Buyer THẮNG --> Hoàn trả tiền bid & cọc
+       pendingReturns[auction.currentTopBidder] += auction.currentTopBid;
+       if(auction.buyerDeposit > 0) {
+        pendingReturns[auction.currentTopBidder] += auction.buyerDeposit;
+        auction.buyerDeposit = 0;
+       }
+
+       // Hoàn trả cọc cho seller (nếu có)
+       if(auction.sellerDeposit > 0) {
+        pendingReturns[auction.seller] += auction.sellerDeposit;
+        auction.sellerDeposit = 0;
+       }
+
+       // Trả NFT về ví của Seller (tức giao dịch bị hủy)
+       adfNFT.transferFrom(address(this), auction.seller, auction.nftTokenId);
+       
+       // Cập nhật trạng thái phase
+       auction.phase = AuctionPhase.RESOLVED;
+       auction.active = false;
+
+       // Emit sự kiện EscrowReleased
+       emit EscrowReleased(_auctionId, auction.currentTopBidder, auction.currentTopBid); 
+    }
+
+    /// @notice Seller thắng tranh chấp → Tiền bid + cọc về cho seller, NFT → buyer
+    function releaseEscrowToSeller(uint256 _auctionId) external nonReentrant {
+        // Chỉ cho phép disputeContract gọi hàm này
+        require(msg.sender == disputeContract, "Only DisputeResolution");
+
+        Auction storage auction = auctions[_auctionId];
+
+        require(auction.phase == AuctionPhase.DISPUTE_OPENED, "No dispute");
+
+        // Seller thắng --> giải phóng tiền bid và cọc cho seller
+        pendingReturns[auction.seller] += auction.currentTopBid;
+        if(auction.sellerDeposit > 0) {
+            pendingReturns[auction.seller] += auction.sellerDeposit;
+            auction.sellerDeposit = 0;
+        }
+
+        // Hoàn trả cọc cho Buyer (nếu có)
+        if(auction.buyerDeposit > 0) {
+            pendingReturns[auction.currentTopBidder] += auction.buyerDeposit;
+            auction.buyerDeposit = 0;
+        }
+
+        // Chuyển NFT sang ví của Buyer (giao dịch hoàn tất)
+        adfNFT.transferFrom(address(this), auction.currentTopBidder, auction.nftTokenId);
+
+        // Cập nhật trạng thái phase
+        auction.phase = AuctionPhase.RESOLVED;
+        auction.active = false;
+        
+        emit EscrowReleased(_auctionId, auction.seller, auction.currentTopBid);
     }
 
     // ham rut tien

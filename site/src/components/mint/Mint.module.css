@@ -1,0 +1,327 @@
+.mintPageContainer {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 32px 20px 60px 20px;
+}
+
+.pageTitleSection {
+  margin-bottom: 32px;
+}
+
+.pageTitle {
+  font-family: 'Anybody', sans-serif;
+  font-size: 2rem;
+  font-weight: 200;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.pageSubtitle {
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-weight: 300;
+}
+
+/* Grids 7:3 Split */
+.middleSection,
+.bottomSection {
+  display: grid;
+  grid-template-columns: 7fr 3fr;
+  gap: var(--bento-gap);
+  margin-bottom: var(--bento-gap);
+}
+
+/* Collection Panel (70% Left Middle) */
+.collectionPanel {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  height: 520px;
+}
+
+.collectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.collectionTitle {
+  font-family: 'Anybody', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.collectionCount {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 0.95rem;
+}
+
+.collectionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-auto-rows: max-content;
+  align-items: start;
+  gap: 16px;
+  overflow-y: auto;
+  flex-grow: 1;
+  padding: 6px 12px 16px 6px;
+  scrollbar-width: thin;
+}
+
+.collectionGrid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.collectionGrid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+}
+
+/* NFT Card in Grid */
+.nftCardItem {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.nftCardItem:hover,
+.nftCardItemActive {
+  transform: translateY(-2px);
+  border-color: var(--color-primary);
+  background: rgba(242, 202, 80, 0.02);
+  box-shadow: 0 8px 24px rgba(242, 202, 80, 0.06);
+}
+
+.nftCardItemActive {
+  border-color: var(--color-primary) !important;
+  background: rgba(242, 202, 80, 0.04) !important;
+}
+
+.nftCardImageContainer {
+  width: 100%;
+  aspect-ratio: 1/1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.nftCardImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s;
+}
+
+.nftCardItem:hover .nftCardImage {
+  transform: scale(1.03);
+}
+
+.nftCardInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nftCardName {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nftCardTokenId {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* NFT Detail Review Panel (30% Right Middle) */
+.nftReviewPanel {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  height: 520px;
+  overflow: hidden;
+}
+
+.reviewPlaceholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px;
+}
+
+
+
+/* Gold Theme Buttons */
+.goldButton {
+  background-color: var(--color-primary) !important;
+  color: #3c2f00 !important; /* onPrimary */
+  border: none !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  box-shadow: 0 4px 15px rgba(242, 202, 80, 0.22) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  padding: 10px 20px !important;
+  border-radius: var(--radius-lg) !important;
+  cursor: pointer;
+}
+
+.goldButton:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 0 25px rgba(242, 202, 80, 0.4) !important;
+}
+
+.goldButton:active:not(:disabled) {
+  transform: translateY(0) !important;
+}
+
+.goldButton:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+/* Mint Form Section (70% Left Bottom) */
+.formSection {
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Upload Image Section (30% Right Bottom) */
+.uploadSection {
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+.uploadDropzone {
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.005);
+  cursor: pointer;
+  transition: all 0.3s;
+  flex-grow: 1;
+  min-height: 160px;
+}
+
+.uploadDropzone:hover {
+  border-color: var(--color-primary);
+  background: rgba(242, 202, 80, 0.01);
+}
+
+.uploadIcon {
+  font-size: 2.2rem;
+  color: var(--color-primary);
+}
+
+.uploadPreviewGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.uploadPreviewItem {
+  position: relative;
+  aspect-ratio: 1/1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.2);
+  cursor: zoom-in;
+}
+
+.uploadPreviewImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.removePreviewBtn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(10, 10, 11, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.removePreviewBtn:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+/* Responsiveness */
+@media (max-width: 1024px) {
+  .middleSection,
+  .bottomSection {
+    grid-template-columns: 1fr;
+    gap: var(--bento-gap);
+  }
+
+  .collectionPanel,
+  .nftReviewPanel {
+    height: 480px;
+  }
+}
+
+@media (max-width: 768px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}

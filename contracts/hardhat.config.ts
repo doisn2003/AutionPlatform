@@ -31,10 +31,16 @@ export default defineConfig({
     hardhatMainnet: {
       type: "edr-simulated",
       chainType: "l1",
+      // initialBaseFeePerGas = 0: giữ phí gas thấp, không leo thang theo block
+      // blockGasLimit đủ lớn để tránh "exceeds gas cap" error
+      initialBaseFeePerGas: 0,
+      blockGasLimit: 30_000_000,
     },
     hardhatOp: {
       type: "edr-simulated",
       chainType: "op",
+      initialBaseFeePerGas: 0,
+      blockGasLimit: 30_000_000,
     },
     sepolia: {
       type: "http",

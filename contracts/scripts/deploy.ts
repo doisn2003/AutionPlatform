@@ -49,17 +49,68 @@ async function main() {
   console.log("   ✅ Initial liquidity added: 10 ETH + 1,000,000 ADF\n");
 
   // ---- Bước 3: Deploy ADF_NFT (ERC721) ----
-  console.log("📦 [3/4] Deploying ADF_NFT (ERC721)...");
+  console.log("📦 [3/5] Deploying ADF_NFT (ERC721)...");
   const adfNft = await viem.deployContract("ADF_NFT", [deployer.account.address]);
   console.log(`   ✅ ADF_NFT deployed to: ${adfNft.address}\n`);
 
   // ---- Bước 4: Deploy AuctionExchange ----
-  console.log("📦 [4/4] Deploying AuctionExchange...");
+  console.log("📦 [4/5] Deploying AuctionExchange...");
   const auctionExchange = await viem.deployContract("AuctionExchange", [
     adf.address,
     adfNft.address,
   ]);
   console.log(`   ✅ AuctionExchange deployed to: ${auctionExchange.address}\n`);
+
+  // ---- Bước 5: Deploy DisputeResolution ----
+  console.log("📦 [5/5] Deploying DisputeResolution...");
+  const disputeResolution = await viem.deployContract("DisputeResolution", [
+    adf.address
+  ]);
+  console.log(`   ✅ DisputeResolution deployed to: ${disputeResolution.address}\n`);
+
+  // ---- Thiết lập các liên kết chéo (Cross-linking) ----
+  console.log("⚙️ Setting up contract cross-linkings...");
+  // 1. AuctionExchange.setDisputeContract(DisputeResolution)
+  await auctionExchange.write.setDisputeContract([disputeResolution.address], { account: deployer.account });
+  // 2. ADF_Pool.setDisputeContract(DisputeResolution)
+  await adfPool.write.setDisputeContract([disputeResolution.address], { account: deployer.account });
+  // 3. DisputeResolution.setAuctionExchange(AuctionExchange)
+  await disputeResolution.write.setAuctionExchange([auctionExchange.address], { account: deployer.account });
+  // 4. DisputeResolution.setAdfPool(ADF_Pool)
+  await disputeResolution.write.setAdfPool([adfPool.address], { account: deployer.account });
+  // 5. DisputeResolution.setServerOracle(deployer)
+  await disputeResolution.write.setServerOracle([deployer.account.address], { account: deployer.account });
+  // 6. DisputeResolution.setDurations(evidence, commit, reveal) -> 180 giây (3 phút) mỗi pha phục vụ demo thoải mái
+  await disputeResolution.write.setDurations([180n, 180n, 180n], { account: deployer.account });
+  console.log("   ✅ Cross-linkings completed successfully!\n");
+
+  // ---- Bước 6: Seed 3 Trọng Tài (Jurors) — Accounts #16-#18 (index 15-17) ----
+  console.log("⚖️ [6/6] Seeding 3 Jurors (Accounts #16-#18)...");
+  const allWallets = await viem.getWalletClients();
+  const jurorWallets = allWallets.slice(15, 18); // index 15, 16, 17
+  const stakeAmount = 500n * 10n ** BigInt(decimals); // 500 ADF
+
+  const jurorAddresses: string[] = [];
+
+  for (let i = 0; i < jurorWallets.length; i++) {
+    const juror = jurorWallets[i]!;
+    const jurorAddr = juror.account.address;
+    jurorAddresses.push(jurorAddr);
+
+    // 1. Juror gọi faucet 5 lần để nhận 500 ADF (100 ADF/lần)
+    for (let f = 0; f < 5; f++) {
+      await adf.write.faucet({ account: juror.account });
+    }
+
+    // 2. Juror approve DisputeResolution contract
+    await adf.write.approve([disputeResolution.address, stakeAmount], { account: juror.account });
+
+    // 3. Juror stake 500 ADF
+    await disputeResolution.write.stakeForJuror([stakeAmount], { account: juror.account });
+
+    console.log(`   ✅ Juror #${i + 1} (Account #${15 + i + 1}): ${jurorAddr} — Staked 500 ADF`);
+  }
+  console.log(`   🎯 3 Jurors seeded successfully!\n`);
 
   // ---- Ghi địa chỉ ra file ----
   const addresses = {
@@ -67,7 +118,9 @@ async function main() {
     ADF_Pool: adfPool.address,
     ADF_NFT: adfNft.address,
     AuctionExchange: auctionExchange.address,
+    DisputeResolution: disputeResolution.address,
     deployer: deployer.account.address,
+    jurors: jurorAddresses,
     network: hre.network.name,
     deployedAt: new Date().toISOString(),
   };
@@ -119,6 +172,7 @@ async function main() {
     ADF_POOL_ADDRESS: adfPool.address,
     ADF_NFT_ADDRESS: adfNft.address,
     AUCTION_EXCHANGE_ADDRESS: auctionExchange.address,
+    DISPUTE_RESOLUTION_ADDRESS: disputeResolution.address,
   });
 
   // Cập nhật site .env
@@ -128,6 +182,7 @@ async function main() {
     VITE_ADF_POOL_ADDRESS: adfPool.address,
     VITE_ADF_NFT_ADDRESS: adfNft.address,
     VITE_AUCTION_EXCHANGE_ADDRESS: auctionExchange.address,
+    VITE_DISPUTE_RESOLUTION_ADDRESS: disputeResolution.address,
   });
 
   console.log("\n=========================================");

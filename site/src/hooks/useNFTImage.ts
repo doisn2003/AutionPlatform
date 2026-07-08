@@ -6,17 +6,34 @@ import { ADF_NFT_ABI, CONTRACT_ADDRESSES } from '../config/contracts';
  * Phân giải đường dẫn IPFS sang HTTP gateway.
  * Mặc định sử dụng Pinata Gateway, có thể fallback sang ipfs.io và cloudflare-ipfs.
  */
-export const resolveIPFS = (url?: string, gatewayIndex = 0): string => {
+export const resolveIPFS = (
+  url?: string, 
+  gatewayIndex = 0, 
+  type: 'image' | 'metadata' = 'image'
+): string => {
   if (!url) return '';
   if (url.startsWith('ipfs://')) {
     const cid = url.replace('ipfs://', '');
+    
+    // Priority 1: Supabase Storage CDN (Instant loading under 100ms)
+    if (gatewayIndex === 0) {
+      if (type === 'metadata') {
+        return `https://xoddvzoyvzkrhjcjwsfw.supabase.co/storage/v1/object/public/nft-metadata/${cid}.json`;
+      } else {
+        return `https://xoddvzoyvzkrhjcjwsfw.supabase.co/storage/v1/object/public/nft-images/${cid}.png`;
+      }
+    }
+    
+    // Priority 2: Public IPFS Gateways (Fallback if CDN is missing the item)
     const gateways = [
       'https://gateway.pinata.cloud/ipfs/',
       'https://ipfs.io/ipfs/',
       'https://cloudflare-ipfs.com/ipfs/'
     ];
-    // Giới hạn index trong khoảng hợp lệ
-    const selectedGateway = gateways[gatewayIndex % gateways.length];
+    
+    // Adjust index because 0 is reserved for Supabase Storage CDN
+    const adjustedIndex = (gatewayIndex - 1) % gateways.length;
+    const selectedGateway = gateways[adjustedIndex];
     return `${selectedGateway}${cid}`;
   }
   return url;
@@ -55,9 +72,9 @@ export function useNFTImage(tokenId?: number, supabaseImage?: string) {
       let metadata: any = null;
       let lastError: any = null;
       
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 4; i++) { // 4 attempts (0 for Supabase CDN, 1-3 for IPFS Gateways)
         try {
-          const url = resolveIPFS(tokenURI, i);
+          const url = resolveIPFS(tokenURI, i, 'metadata');
           const res = await fetch(url);
           if (res.ok) {
             metadata = await res.json();

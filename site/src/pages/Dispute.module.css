@@ -1,0 +1,665 @@
+.container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 30px 24px 40px 24px;
+  color: var(--text-primary);
+}
+
+/* Dashboard Header */
+.dashboardHeader {
+  margin-bottom: 32px;
+}
+
+.dashboardTitle {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.dashboardDescription {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 700px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Dashboard Zones */
+.zonesContainer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 992px) {
+  .zonesContainer {
+    grid-template-columns: 1fr;
+  }
+}
+
+.zone {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 400px;
+}
+
+.zoneHeader {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 16px;
+}
+
+.zoneTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.zoneTitleGold {
+  color: var(--color-primary);
+}
+
+.zoneTitleBlue {
+  color: #00e3fd;
+}
+
+.zoneDescription {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cardsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.emptyZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  border: 1px dashed rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Auction card in dashboard list */
+.auctionCard {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.auctionCard:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+}
+
+.cardThumb {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.cardContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 6px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.roleBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.roleSeller {
+  background: rgba(242, 202, 80, 0.08);
+  border: 1px solid rgba(242, 202, 80, 0.2);
+  color: var(--color-primary);
+}
+
+.roleWinner {
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  color: #00e3fd;
+}
+
+.roleJuror {
+  background: rgba(138, 43, 226, 0.08);
+  border: 1px solid rgba(138, 43, 226, 0.2);
+  color: #c975ff;
+}
+
+.cardBid {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+/* Back navigation button */
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  transition: color var(--transition-fast);
+}
+
+.backButton:hover {
+  color: var(--color-primary);
+}
+
+/* Detail Viewport Elements */
+.detailHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.detailTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.badgeRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.categoryBadge {
+  background: rgba(242, 202, 80, 0.08);
+  border: 1px solid rgba(242, 202, 80, 0.2);
+  color: var(--color-primary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.deliveryBadge {
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  color: #00e3fd;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.phaseBadge {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Detail Layout Grid */
+.detailGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1.6fr;
+  gap: 30px;
+}
+
+@media (max-width: 1024px) {
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.leftSubCol {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.rightSubCol {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* NFT Details & Tech Spec cards */
+.previewWrapper {
+  padding: 24px;
+}
+
+.technicalCard {
+  padding: 24px;
+}
+
+.technicalTitle {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin-bottom: 18px;
+  letter-spacing: 0.05em;
+  border-left: 2px solid var(--color-primary);
+  padding-left: 8px;
+}
+
+.technicalGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.technicalItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  padding-bottom: 8px;
+}
+
+.technicalLabel {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.technicalValue {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.valueMono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+}
+
+.valueLink {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.valueLink:hover {
+  text-decoration: underline;
+}
+
+/* Confirmation Box (Mock UI *) */
+.confirmCard {
+  padding: 24px;
+}
+
+.confirmTitle {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0 0 10px 0;
+  letter-spacing: 0.05em;
+  border-left: 2px solid var(--color-primary);
+  padding-left: 8px;
+}
+
+.userRoleInfo {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.userRoleInfo strong {
+  color: var(--color-primary);
+}
+
+.confirmDesc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.confirmBtnRow {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.confirmBtnRelease {
+  flex: 1;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity var(--transition-fast);
+}
+
+.confirmBtnRelease:hover {
+  opacity: 0.9;
+}
+
+.confirmBtnDispute {
+  flex: 1;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity var(--transition-fast);
+}
+
+.confirmBtnDispute:hover {
+  opacity: 0.9;
+}
+
+.confirmState {
+  margin-top: 16px;
+  padding: 14px;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  border-radius: var(--radius-md);
+  color: #10b981;
+  font-size: 0.85rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.confirmStateDisputed {
+  background: rgba(239, 68, 68, 0.05) !important;
+  border-color: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+}
+
+/* Chat 1-1 Box */
+.chatBox {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  height: 380px;
+}
+
+.chatHeader {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chatTitleContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #bdf4ff;
+}
+
+.chatTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.chatStatus {
+  font-size: 0.7rem;
+  color: #10b981;
+  font-weight: 600;
+}
+
+.messagesList {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+  margin-bottom: 16px;
+}
+
+.messageItem {
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  border: 1px solid transparent;
+}
+
+.messageSystem {
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+.messageMeta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.messageSender {
+  font-weight: 700;
+  color: #bdf4ff;
+}
+
+.senderSystem {
+  color: #10b981;
+}
+
+.senderMe {
+  color: var(--color-primary);
+}
+
+.messageTime {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.messageText {
+  color: var(--text-secondary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.chatInputForm {
+  display: flex;
+  gap: 8px;
+}
+
+.chatInput {
+  flex: 1;
+  padding: 10px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.chatInput:focus {
+  border-color: var(--color-primary);
+}
+
+.chatSendBtn {
+  border-radius: var(--radius-full);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top: 2px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Participants Bridge Card */
+.participantsCard {
+  padding: 24px;
+}
+
+.participantsRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 576px) {
+  .participantsRow {
+    flex-direction: column;
+  }
+}
+
+.participantCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+
+.participantColActive {
+  border-color: rgba(242, 202, 80, 0.15) !important;
+  background: rgba(242, 202, 80, 0.01) !important;
+}
+
+.participantLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.participantAddress {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stakeInfo {
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stakeItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.stakeLabel {
+  color: var(--text-muted);
+}
+
+.stakeValue {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stakeValueHighlight {
+  color: var(--color-primary);
+}
+
+.participantStatusText {
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.statusGreen {
+  color: #10b981;
+}
+
+.statusOrange {
+  color: #f59e0b;
+}
+
+.statusRed {
+  color: #ef4444;
+}
+
