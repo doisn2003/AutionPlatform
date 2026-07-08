@@ -41,7 +41,7 @@ describe("DisputeResolution Step 4 Test", async function () {
         await adf.write.approve([auction.address, 2000n * unit], { account: buyer1.account });
 
         // Cấp ADF cho các jurors và thực hiện staking
-        const jurors = [juror1, juror2, juror3, juror4, juror5];
+        const jurors = [juror1, juror2, juror3];
         for (const juror of jurors) {
             await adf.write.transfer([juror.account.address, 1000n * unit], { account: owner.account });
             await adf.write.approve([dispute.address, 1000n * unit], { account: juror.account });
@@ -115,12 +115,12 @@ describe("DisputeResolution Step 4 Test", async function () {
             );
         });
 
-        it("Tự động chuyển sang pha REVEAL khi cả 5 jurors đã commit xong", async function () {
+        it("Tự động chuyển sang pha REVEAL khi cả 3 jurors đã commit xong", async function () {
             const { dispute, jurors, serverOracle } = await networkHelpers.loadFixture(deployFixtures);
             const jurorAddresses = jurors.map(j => j.account.address);
             await dispute.write.setJurors([1n, jurorAddresses], { account: serverOracle.account });
 
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 3; i++) {
                 const hash = createCommitHash(1, `secret${i}`);
                 await dispute.write.commitVote([1n, hash], { account: jurors[i].account });
             }
@@ -136,10 +136,9 @@ describe("DisputeResolution Step 4 Test", async function () {
             const jurorAddresses = jurors.map(j => j.account.address);
             await dispute.write.setJurors([1n, jurorAddresses], { account: serverOracle.account });
 
-            // Chỉ có 3 jurors commit phiếu
+            // Chỉ có 2 jurors commit phiếu (chưa đủ 3 để tự động chuyển pha)
             await dispute.write.commitVote([1n, createCommitHash(1, "sec0")], { account: jurors[0].account });
             await dispute.write.commitVote([1n, createCommitHash(2, "sec1")], { account: jurors[1].account });
-            await dispute.write.commitVote([1n, createCommitHash(1, "sec2")], { account: jurors[2].account });
 
             // Tua thời gian vượt quá commitDeadline (2 ngày)
             await networkHelpers.time.increase(2 * 86400 + 10);
@@ -174,8 +173,8 @@ describe("DisputeResolution Step 4 Test", async function () {
         it("Báo lỗi nếu mở phiếu sai mật khẩu Salt hoặc lựa chọn", async function () {
             const { dispute, jurors } = await networkHelpers.loadFixture(setupCommitPhaseFixture);
             
-            // Cả 5 jurors commit
-            for (let i = 0; i < 5; i++) {
+            // Cả 3 jurors commit
+            for (let i = 0; i < 3; i++) {
                 const hash = createCommitHash(1, `secret${i}`);
                 await dispute.write.commitVote([1n, hash], { account: jurors[i].account });
             }
@@ -196,10 +195,10 @@ describe("DisputeResolution Step 4 Test", async function () {
         it("Mở phiếu thành công, cập nhật số phiếu bầu chính xác cho các bên", async function () {
             const { dispute, jurors } = await networkHelpers.loadFixture(setupCommitPhaseFixture);
             
-            // Commit phiếu: 3 người chọn Buyer (1), 2 người chọn Seller (2)
-            const votes = [1, 2, 1, 2, 1];
-            const salts = ["s0", "s1", "s2", "s3", "s4"];
-            for (let i = 0; i < 5; i++) {
+            // Commit phiếu: 2 người chọn Buyer (1), 1 người chọn Seller (2)
+            const votes = [1, 2, 1];
+            const salts = ["s0", "s1", "s2"];
+            for (let i = 0; i < 3; i++) {
                 const hash = createCommitHash(votes[i], salts[i]);
                 await dispute.write.commitVote([1n, hash], { account: jurors[i].account });
             }
@@ -207,11 +206,10 @@ describe("DisputeResolution Step 4 Test", async function () {
             // Lúc này tự chuyển sang pha REVEAL, thực hiện reveal
             await dispute.write.revealVote([1n, votes[0], salts[0]], { account: jurors[0].account });
             await dispute.write.revealVote([1n, votes[1], salts[1]], { account: jurors[1].account });
-            await dispute.write.revealVote([1n, votes[2], salts[2]], { account: jurors[2].account });
 
             const disputeInfo = await dispute.read.disputes([1n]);
             // Index 10: buyerVotes, Index 11: sellerVotes (các mảng được bỏ qua trong getter mặc định)
-            assert.equal(disputeInfo[10], 2); // 2 phiếu cho buyer đã được reveal (juror0, juror2)
+            assert.equal(disputeInfo[10], 1); // 1 phiếu cho buyer đã được reveal (juror0)
             assert.equal(disputeInfo[11], 1); // 1 phiếu cho seller đã được reveal (juror1)
         });
     });

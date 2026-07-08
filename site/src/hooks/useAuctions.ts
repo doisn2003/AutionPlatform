@@ -34,6 +34,7 @@ export interface AuctionFromAPI {
   token_uri?: string;
   images?: string | string[];
   attributes?: any;
+  is_juror?: boolean;
 }
 
 interface AuctionAPIResponse {

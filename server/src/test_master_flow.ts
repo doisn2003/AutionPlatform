@@ -162,8 +162,6 @@ const HARDHAT_KEYS: Address[] = [
   '0x7c852118294e51e653712a81e05800f4191417423a3f084c9f2ec9f907743308', // Juror 1
   '0x47e17c207a8525095d1131465f24f148472145e7f1bd93a70fd17e082c58752d', // Juror 2
   '0x8b1f93831bb55e13093d5b234140e2e1a9f2e1dfd93e70fd17e082c5875253d1', // Juror 3
-  '0xa267530f49f8280200e4e4e97b1129321528f8f07be5d57b2933a69622d1641b', // Juror 4
-  '0xdbda1821b80551c9d65939329250298aa3472ba22feea9213d50dec403bcf7e5', // Juror 5
 ];
 
 // Helper để tua nhanh thời gian trên Hardhat
@@ -426,7 +424,7 @@ async function runMasterE2ETest() {
     });
     await publicClient.waitForTransactionReceipt({ hash: txSwapDeployer });
 
-    // 6.1 Thực hiện nạp stake on-chain & lưu profile cho 5 Jurors
+    // 6.1 Thực hiện nạp stake on-chain & lưu profile cho 3 Jurors
     for (let i = 0; i < jurorAccounts.length; i++) {
       const jurorAcc = jurorAccounts[i];
       const jurorWallet = createWalletClient({ account: jurorAcc, chain: publicClient.chain, transport: http(publicClient.transport.url) });
@@ -463,11 +461,15 @@ async function runMasterE2ETest() {
            wallet_address, display_name, reputation_score, juror_eligible, 
            adf_staked_for_juror, total_bids_placed, total_disputes_lost
          )
-         VALUES ($1, $2, 90, true, $3, 10, 0)`,
+         VALUES ($1, $2, 90, true, $3, 10, 0)
+         ON CONFLICT (wallet_address) DO UPDATE SET
+           reputation_score = EXCLUDED.reputation_score,
+           juror_eligible = true,
+           adf_staked_for_juror = EXCLUDED.adf_staked_for_juror`,
         [jurorAcc.address.toLowerCase(), `Juror ${i+1}`, (500n * 10n**18n).toString()]
       );
     }
-    console.log('   5 Jurors on-chain Staked & DB profiles created.');
+    console.log('   3 Jurors on-chain Staked & DB profiles created.');
 
     // 6.2 Gọi Oracle gán trọng tài tự động
     const { assignJurorsAutomatically } = require('./services/oracleService');
@@ -480,13 +482,13 @@ async function runMasterE2ETest() {
     console.log(`   Dispute Phase after Jurors: ${dbDisputeAfterJurors.rows[0].phase}`);
     console.log(`   Dispute Selected Jurors:`, dbDisputeAfterJurors.rows[0].selected_jurors);
 
-    if (dbDisputeAfterJurors.rows[0].phase !== 'COMMIT' || dbDisputeAfterJurors.rows[0].selected_jurors.length !== 5) {
-      throw new Error('Jury assignment sync failed!');
+    if (dbDisputeAfterJurors.rows[0].phase !== 'COMMIT' || dbDisputeAfterJurors.rows[0].selected_jurors.length !== 3) {
+      throw new Error(`Auto assignment failed! Expected 3 jurors, got: ${dbDisputeAfterJurors.rows[0].selected_jurors ? dbDisputeAfterJurors.rows[0].selected_jurors.length : 0}`);
     }
 
     const dbVotes = await pool.query('SELECT count(*) as total_votes FROM dispute_votes WHERE dispute_id = $1', [disputeId]);
     console.log(`   Blank votes initialized in DB: ${dbVotes.rows[0].total_votes} rows`);
-    if (Number(dbVotes.rows[0].total_votes) !== 5) {
+    if (Number(dbVotes.rows[0].total_votes) !== 3) {
       throw new Error('Blank votes were not initialized in DB!');
     }
     console.log('   %s Step 6 PASS: Juror staking and auto assignment verified.', '\x1b[32m✅\x1b[0m');
@@ -497,8 +499,8 @@ async function runMasterE2ETest() {
     console.log('\n--- STEP 7: Commit Votes ---');
 
     // 3 Trọng tài bầu BUYER (1), 2 Trọng tài bầu SELLER (2)
-    const votes = [1, 1, 1, 2, 2];
-    const salts = ['s1', 's2', 's3', 's4', 's5'];
+    const votes = [1, 1, 2];
+    const salts = ['s1', 's2', 's3'];
 
     for (let i = 0; i < jurorAccounts.length; i++) {
       const jurorWallet = createWalletClient({ account: jurorAccounts[i], chain: publicClient.chain, transport: http(publicClient.transport.url) });
@@ -518,13 +520,13 @@ async function runMasterE2ETest() {
     const dbCommittedVotes = await pool.query('SELECT count(*) as committed_count FROM dispute_votes WHERE dispute_id = $1 AND has_committed = true', [disputeId]);
     console.log(`   Committed votes count in DB: ${dbCommittedVotes.rows[0].committed_count}`);
     
-    if (Number(dbCommittedVotes.rows[0].committed_count) !== 5) {
+    if (Number(dbCommittedVotes.rows[0].committed_count) !== 3) {
       throw new Error('Not all committed votes synced!');
     }
 
-    // Đọc pha mới trong DB (phải tự auto-advance sang REVEAL sau khi nhận đủ 5 commit votes)
+    // Đọc pha mới trong DB (phải tự auto-advance sang REVEAL sau khi nhận đủ 3 commit votes)
     const dbDisputeAfterCommit = await pool.query('SELECT phase FROM disputes WHERE dispute_id = $1', [disputeId]);
-    console.log(`   Dispute Phase after 5 commits: ${dbDisputeAfterCommit.rows[0].phase}`);
+    console.log(`   Dispute Phase after 3 commits: ${dbDisputeAfterCommit.rows[0].phase}`);
     
     if (dbDisputeAfterCommit.rows[0].phase !== 'REVEAL') {
       throw new Error('Phase did not auto-advance to REVEAL in DB!');
@@ -559,7 +561,7 @@ async function runMasterE2ETest() {
     );
     console.log(`   Revealed count in DB: ${dbRevealedVotes.rows[0].count} (Buyer: ${dbRevealedVotes.rows[0].buyer_votes}, Seller: ${dbRevealedVotes.rows[0].seller_votes})`);
 
-    if (Number(dbRevealedVotes.rows[0].count) !== 5 || Number(dbRevealedVotes.rows[0].buyer_votes) !== 3) {
+    if (Number(dbRevealedVotes.rows[0].count) !== 3 || Number(dbRevealedVotes.rows[0].buyer_votes) !== 2) {
       throw new Error('Reveal votes sync mismatch!');
     }
     console.log('   %s Step 8 PASS: Reveal Phase verified.', '\x1b[32m✅\x1b[0m');
@@ -592,11 +594,11 @@ async function runMasterE2ETest() {
     }
 
     // Kiểm tra tiền thưởng phạt Trọng tài
-    // Bầu đúng (3 người): Nhận +50 ADF. Bầu sai (2 người): Phạt -100 ADF.
+    // Bầu đúng (2 người): Nhận +50 ADF. Bầu sai (1 người): Phạt -100 ADF.
     const dbJurorStakes = await pool.query('SELECT juror, reward_amount, penalty_amount FROM dispute_votes WHERE dispute_id = $1 ORDER BY juror ASC', [disputeId]);
     
     for (const row of dbJurorStakes.rows) {
-      const isWinnerJuror = jurorAddresses.slice(0, 3).includes(row.juror.toLowerCase());
+      const isWinnerJuror = jurorAddresses.slice(0, 2).includes(row.juror.toLowerCase());
       if (isWinnerJuror) {
         if (Number(row.reward_amount) !== 50e18) {
           throw new Error(`Winner juror ${row.juror} did not receive correct reward. Got: ${row.reward_amount}`);

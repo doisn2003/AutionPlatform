@@ -39,10 +39,10 @@ const Header: React.FC = () => {
 
   const navLinks = [
     { name: 'Trang chủ', path: '/' },
-    { name: 'Đúc vật phẩm', path: '/mint' },
+    { name: 'Bộ sưu tập', path: '/mint' },
     { name: 'Giao dịch', path: '/transaction' },
-    { name: 'Bàn giao & Tranh chấp', path: '/dispute' },
-    { name: 'Bảng xếp hạng uy tín', path: '/reputation' },
+    { name: 'Bàn giao', path: '/dispute' },
+    { name: 'Bảng xếp hạng', path: '/reputation' },
   ];
 
   return (

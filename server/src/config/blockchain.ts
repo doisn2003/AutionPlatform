@@ -288,7 +288,7 @@ export const DISPUTE_RESOLUTION_ABI = [
     name: 'JurorsAssigned',
     inputs: [
       { name: 'disputeId', type: 'uint256', indexed: true },
-      { name: 'jurors', type: 'address[5]', indexed: false },
+      { name: 'jurors', type: 'address[3]', indexed: false },
     ],
   },
   {
@@ -394,7 +394,7 @@ export const DISPUTE_RESOLUTION_ABI = [
     name: 'setJurors',
     inputs: [
       { name: '_disputeId', type: 'uint256' },
-      { name: '_jurors', type: 'address[5]' },
+      { name: '_jurors', type: 'address[3]' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',

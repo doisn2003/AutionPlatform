@@ -13,7 +13,7 @@ export async function assignJurorsAutomatically(disputeId: number, auctionId: nu
 
     if (disputeDbRes.rows.length > 0) {
       const { phase, selected_jurors, evidence_deadline } = disputeDbRes.rows[0];
-      if (phase !== 'EVIDENCE' || (selected_jurors && selected_jurors.length === 5)) {
+      if (phase !== 'EVIDENCE' || (selected_jurors && selected_jurors.length === 3)) {
         console.log(`   ℹ️ Oracle: Dispute #${disputeId} is already assigned or resolved (Phase: ${phase}). Skipping.`);
         return;
       }
@@ -40,7 +40,7 @@ export async function assignJurorsAutomatically(disputeId: number, auctionId: nu
     const sellerLower = seller.toLowerCase();
     const buyerLower = buyer ? buyer.toLowerCase() : '';
 
-    // 3. Truy vấn lấy ra Top 5 trọng tài có reputation_score cao nhất và đủ điều kiện làm Juror
+    // 3. Truy vấn lấy ra Top 3 trọng tài có reputation_score cao nhất và đủ điều kiện làm Juror
     const jurorsRes = await pool.query(
       `SELECT wallet_address, reputation_score 
        FROM user_profiles 
@@ -48,17 +48,17 @@ export async function assignJurorsAutomatically(disputeId: number, auctionId: nu
          AND wallet_address != $1 
          AND wallet_address != $2
        ORDER BY reputation_score DESC, wallet_address ASC
-       LIMIT 5`,
+       LIMIT 3`,
       [sellerLower, buyerLower]
     );
 
-    if (jurorsRes.rows.length < 5) {
-      console.warn(`   ⚠️ Oracle: Only found ${jurorsRes.rows.length} eligible jurors. Required 5. Oracle waits.`);
+    if (jurorsRes.rows.length < 3) {
+      console.warn(`   ⚠️ Oracle: Only found ${jurorsRes.rows.length} eligible jurors. Required 3. Oracle waits.`);
       return;
     }
 
     const selectedJurors = jurorsRes.rows.map(row => row.wallet_address);
-    console.log(`   Selected Top 5 Jurors:`, selectedJurors);
+    console.log(`   Selected Top 3 Jurors:`, selectedJurors);
 
     // 4. Gửi giao dịch setJurors lên blockchain bằng ví Oracle
     if (!walletClient) {

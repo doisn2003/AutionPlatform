@@ -1,3 +1,4 @@
+//@ts-nocheck
 import { network } from "hardhat";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -11,7 +12,7 @@ describe("DisputeResolution Step 5 Test", async function () {
     const PHASE_RESOLVED = 3;
 
     async function deployFixtures() {
-        const [owner, seller, buyer1, serverOracle, juror1, juror2, juror3, juror4, juror5, userNoStake] = await viem.getWalletClients();
+        const [owner, seller, buyer1, serverOracle, juror1, juror2, juror3, userNoStake] = await viem.getWalletClients();
         
         const adf = await viem.deployContract("ADF");
         const nft = await viem.deployContract("ADF_NFT", [owner.account.address]);
@@ -46,7 +47,7 @@ describe("DisputeResolution Step 5 Test", async function () {
         await adf.write.approve([auction.address, 2000n * unit], { account: buyer1.account });
 
         // Cấp ADF cho các jurors và thực hiện staking
-        const jurors = [juror1, juror2, juror3, juror4, juror5];
+        const jurors = [juror1, juror2, juror3];
         for (const juror of jurors) {
             await adf.write.transfer([juror.account.address, 1000n * unit], { account: owner.account });
             await adf.write.approve([dispute.address, 1000n * unit], { account: juror.account });
@@ -71,8 +72,8 @@ describe("DisputeResolution Step 5 Test", async function () {
             // Gán Trọng tài và nộp cọc
             await dispute.write.setJurors([1n, jurorAddresses], { account: serverOracle.account });
             
-            // Thực hiện commit hết cả 5 trọng tài -> sang REVEAL phase
-            for (let i = 0; i < 5; i++) {
+            // Thực hiện commit hết cả 3 trọng tài -> sang REVEAL phase
+            for (let i = 0; i < 3; i++) {
                 await dispute.write.commitVote([1n, createCommitHash(1, `s${i}`)], { account: jurors[i].account });
             }
 
@@ -104,13 +105,13 @@ describe("DisputeResolution Step 5 Test", async function () {
             await fixture.dispute.write.setJurors([1n, jurorAddresses], { account: fixture.serverOracle.account });
 
             // 3. Commit votes
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 3; i++) {
                 const hash = createCommitHash(votes[i], salts[i]);
                 await fixture.dispute.write.commitVote([1n, hash], { account: fixture.jurors[i].account });
             }
 
             // 4. Reveal votes
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 3; i++) {
                 await fixture.dispute.write.revealVote([1n, votes[i], salts[i]], { account: fixture.jurors[i].account });
             }
 
@@ -120,10 +121,10 @@ describe("DisputeResolution Step 5 Test", async function () {
             return fixture;
         }
 
-        it("Buyer Thắng (3 phiếu Buyer, 2 phiếu Seller) -> Phân phối cọc và phạt đúng", async function () {
-            // Juror 0, 2, 4 vote Buyer (1); Juror 1, 3 vote Seller (2)
-            const votes = [1, 2, 1, 2, 1];
-            const salts = ["s0", "s1", "s2", "s3", "s4"];
+        it("Buyer Thắng (2 phiếu Buyer, 1 phiếu Seller) -> Phân phối cọc và phạt đúng", async function () {
+            // Juror 0, 2 vote Buyer (1); Juror 1 vote Seller (2)
+            const votes = [1, 2, 1];
+            const salts = ["s0", "s1", "s2"];
             const { dispute, adf, nft, auction, pool, buyer1, seller, jurors, unit } = await setupVotingFixture(votes, salts);
 
             // Ghi nhận số dư trước khi resolve
@@ -146,26 +147,26 @@ describe("DisputeResolution Step 5 Test", async function () {
             assert.equal(nftOwner.toLowerCase(), seller.account.address.toLowerCase()); // NFT về seller
 
             // 3. Kiểm tra Thưởng / Phạt Juror
-            // Juror 0, 2, 4 đúng (+50) -> stake tăng từ 500 lên 550
-            for (const i of [0, 2, 4]) {
+            // Juror 0, 2 đúng (+50) -> stake tăng từ 500 lên 550
+            for (const i of [0, 2]) {
                 const stake = await dispute.read.jurorStakes([jurors[i].account.address]);
                 assert.equal(stake, 550n * unit);
             }
-            // Juror 1, 3 sai (-100) -> stake giảm từ 500 xuống 400
-            for (const i of [1, 3]) {
+            // Juror 1 sai (-100) -> stake giảm từ 500 xuống 400
+            for (const i of [1]) {
                 const stake = await dispute.read.jurorStakes([jurors[i].account.address]);
                 assert.equal(stake, 400n * unit);
             }
 
-            // Tiền phạt chuyển vào Pool AMM (+200 ADF), trích thưởng cho 3 trọng tài đúng (-150 ADF) -> Net +50 ADF
+            // Tiền phạt chuyển vào Pool AMM (+100 ADF), trích thưởng cho 2 trọng tài đúng (-100 ADF) -> Net +0 ADF
             const poolBalAfter = await adf.read.balanceOf([pool.address]);
-            assert.equal(poolBalAfter, poolBalBefore + 50n * unit);
+            assert.equal(poolBalAfter, poolBalBefore + 0n * unit);
         });
 
-        it("Seller Thắng (1 phiếu Buyer, 4 phiếu Seller) -> Phân phối cọc và NFT đúng", async function () {
-            // Juror 0 vote Buyer (1); Juror 1, 2, 3, 4 vote Seller (2)
-            const votes = [1, 2, 2, 2, 2];
-            const salts = ["s0", "s1", "s2", "s3", "s4"];
+        it("Seller Thắng (1 phiếu Buyer, 2 phiếu Seller) -> Phân phối cọc và NFT đúng", async function () {
+            // Juror 0 vote Buyer (1); Juror 1, 2 vote Seller (2)
+            const votes = [1, 2, 2];
+            const salts = ["s0", "s1", "s2"];
             const { dispute, nft, auction, buyer1, seller, unit } = await setupVotingFixture(votes, salts);
 
             // Gọi resolveDispute
@@ -215,7 +216,7 @@ describe("DisputeResolution Step 5 Test", async function () {
             assert.equal(disputeInfo[6], PHASE_RESOLVED); // phase = RESOLVED (3)
 
             // Đảm bảo không ai bị phạt (cọc các juror giữ nguyên 500)
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 3; i++) {
                 const stake = await dispute.read.jurorStakes([jurorAddresses[i]]);
                 assert.equal(stake, 500n * unit);
             }

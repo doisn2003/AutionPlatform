@@ -251,12 +251,19 @@ export async function getUserEscrowAuctions(req: Request, res: Response): Promis
 
     const result = await pool.query(
       `SELECT a.*, n.name, n.image, n.description, n.token_uri, n.images, n.attributes,
-              c.display_name AS category_name, c.icon AS category_icon
+              c.display_name AS category_name, c.icon AS category_icon,
+              CASE WHEN EXISTS (
+                SELECT 1 FROM disputes d JOIN dispute_votes dv ON d.dispute_id = dv.dispute_id
+                WHERE d.auction_id = a.auction_id AND LOWER(dv.juror) = $1
+              ) THEN true ELSE false END AS is_juror
        FROM auctions a
        LEFT JOIN nfts n ON a.nft_token_id = n.token_id
        LEFT JOIN asset_categories c ON 
          COALESCE(a.category_code, CASE WHEN a.asset_type = 'PHYSICAL' THEN 'PHYSICAL_OTHER' ELSE 'DIGITAL_NFT_ART' END) = c.category_code
-       WHERE (a.seller = $1 OR a.current_top_bidder = $1)
+       WHERE (a.seller = $1 OR a.current_top_bidder = $1 OR EXISTS (
+         SELECT 1 FROM disputes d JOIN dispute_votes dv ON d.dispute_id = dv.dispute_id
+         WHERE d.auction_id = a.auction_id AND LOWER(dv.juror) = $1
+       ))
          AND a.asset_type = 'PHYSICAL'
        ORDER BY a.created_at DESC`,
       [address]

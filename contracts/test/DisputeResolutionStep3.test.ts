@@ -40,7 +40,7 @@ describe("DisputeResolution Step 3 Test", async function () {
         await adf.write.approve([auction.address, 2000n * unit], { account: buyer1.account });
 
         // Cấp ADF cho các jurors và thực hiện staking
-        const jurors = [juror1, juror2, juror3, juror4, juror5];
+        const jurors = [juror1, juror2, juror3];
         for (const juror of jurors) {
             await adf.write.transfer([juror.account.address, 1000n * unit], { account: owner.account });
             await adf.write.approve([dispute.address, 1000n * unit], { account: juror.account });
@@ -166,8 +166,6 @@ describe("DisputeResolution Step 3 Test", async function () {
             const invalidJurorAddresses = [
                 jurors[0].account.address,
                 jurors[1].account.address,
-                jurors[2].account.address,
-                jurors[3].account.address,
                 userNoStake.account.address // Người này chưa stake
             ];
 
@@ -182,8 +180,6 @@ describe("DisputeResolution Step 3 Test", async function () {
             const invalidJurorAddresses = [
                 jurors[0].account.address,
                 jurors[1].account.address,
-                jurors[2].account.address,
-                jurors[3].account.address,
                 seller.account.address // Trùng với seller
             ];
 
@@ -203,7 +199,7 @@ describe("DisputeResolution Step 3 Test", async function () {
             assert.equal(disputeInfo[6], PHASE_COMMIT); // phase = COMMIT (1)
 
             // Kiểm tra các ví trọng tài đã được lưu đúng
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 3; i++) {
                 const selected = await dispute.read.getJurorIndex([1n, jurorAddresses[i]]);
                 assert.equal(selected, i);
             }

@@ -726,20 +726,6 @@ async function handleDisputeOpened(event: any): Promise<void> {
     // Track dispute opened stat for initiator
     await incrementUserStat(initiator, 'total_disputes_filed');
 
-    // Get nft_token_id and seller to return NFT ownership back to seller in DB
-    const res = await pool.query(
-      `SELECT nft_token_id, seller FROM auctions WHERE auction_id = $1`,
-      [Number(auctionId)]
-    );
-    if (res.rows.length > 0) {
-      const { nft_token_id, seller } = res.rows[0];
-      await pool.query(
-        `UPDATE nfts SET owner = $1 WHERE token_id = $2`,
-        [seller.toLowerCase(), Number(nft_token_id)]
-      );
-      console.log(`   🖼️ NFT #${nft_token_id} owner updated back to seller: ${seller}`);
-    }
-
     console.log(`   ⚖️ DisputeOpened for Auction #${auctionId} by ${initiator}`);
   } catch (err) {
     console.error(`   ❌ Error saving DisputeOpened #${auctionId}:`, err);
@@ -1077,7 +1063,7 @@ async function handleDisputeResolved(event: any): Promise<void> {
         const nftNewOwner = isBuyerWinner ? sellerProfile : buyerProfile;
         
         await pool.query(
-          `UPDATE nfts SET owner = $1, updated_at = NOW() WHERE token_id = $2`,
+          `UPDATE nfts SET owner = $1 WHERE token_id = $2`,
           [nftNewOwner, nftTokenId]
         );
         console.log(`   🎨 Sync NFT Owner: NFT #${nftTokenId} ownership updated to ${nftNewOwner}`);

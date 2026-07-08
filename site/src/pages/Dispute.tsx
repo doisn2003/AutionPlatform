@@ -163,6 +163,7 @@ const Dispute: React.FC = () => {
                         <div className={styles.cardsGrid}>
                           {gameTheoryAuctions.map(item => {
                             const isSeller = item.seller.toLowerCase() === userAddress.toLowerCase();
+                            const isJuror = item.is_juror;
                             const topBid = parseFloat(formatUnits(BigInt(item.current_top_bid || '0'), 18));
                             const startPrice = parseFloat(formatUnits(BigInt(item.reserve_price), 18));
                             
@@ -180,8 +181,8 @@ const Dispute: React.FC = () => {
                                 <div className={styles.cardContent}>
                                   <h4 className={styles.cardTitle}>{item.name || `NFT #${item.nft_token_id}`}</h4>
                                   <div className={styles.cardMeta}>
-                                    <span className={`${styles.roleBadge} ${isSeller ? styles.roleSeller : styles.roleWinner}`}>
-                                      {isSeller ? 'Bán' : 'Mua'}
+                                    <span className={`${styles.roleBadge} ${isJuror ? styles.roleJuror : (isSeller ? styles.roleSeller : styles.roleWinner)}`}>
+                                      {isJuror ? 'Juror' : (isSeller ? 'Bán' : 'Mua')}
                                     </span>
                                     <span className={styles.cardBid}>
                                       {(topBid > 0 ? topBid : startPrice).toFixed(2)} ADF
@@ -214,6 +215,7 @@ const Dispute: React.FC = () => {
                         <div className={styles.cardsGrid}>
                           {juryVotingAuctions.map(item => {
                             const isSeller = item.seller.toLowerCase() === userAddress.toLowerCase();
+                            const isJuror = item.is_juror;
                             const topBid = parseFloat(formatUnits(BigInt(item.current_top_bid || '0'), 18));
                             const startPrice = parseFloat(formatUnits(BigInt(item.reserve_price), 18));
                             
@@ -231,8 +233,8 @@ const Dispute: React.FC = () => {
                                 <div className={styles.cardContent}>
                                   <h4 className={styles.cardTitle}>{item.name || `NFT #${item.nft_token_id}`}</h4>
                                   <div className={styles.cardMeta}>
-                                    <span className={`${styles.roleBadge} ${isSeller ? styles.roleSeller : styles.roleWinner}`}>
-                                      {isSeller ? 'Bán' : 'Mua'}
+                                    <span className={`${styles.roleBadge} ${isJuror ? styles.roleJuror : (isSeller ? styles.roleSeller : styles.roleWinner)}`}>
+                                      {isJuror ? 'Juror' : (isSeller ? 'Bán' : 'Mua')}
                                     </span>
                                     <span className={styles.cardBid}>
                                       {(topBid > 0 ? topBid : startPrice).toFixed(2)} ADF

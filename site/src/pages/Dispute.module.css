@@ -167,6 +167,12 @@
   color: #00e3fd;
 }
 
+.roleJuror {
+  background: rgba(138, 43, 226, 0.08);
+  border: 1px solid rgba(138, 43, 226, 0.2);
+  color: #c975ff;
+}
+
 .cardBid {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.85rem;

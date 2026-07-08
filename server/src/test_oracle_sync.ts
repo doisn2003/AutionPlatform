@@ -82,8 +82,6 @@ const HARDHAT_KEYS: Address[] = [
   '0x7c852118294e51e653712a81e05800f4191417423a3f084c9f2ec9f907743308', // Juror 1
   '0x47e17c207a8525095d1131465f24f148472145e7f1bd93a70fd17e082c58752d', // Juror 2
   '0x8b1f93831bb55e13093d5b234140e2e1a9f2e1dfd93e70fd17e082c5875253d1', // Juror 3
-  '0xa267530f49f8280200e4e4e97b1129321528f8f07be5d57b2933a69622d1641b', // Juror 4
-  '0xdbda1821b80551c9d65939329250298aa3472ba22feea9213d50dec403bcf7e5', // Juror 5
 ];
 
 async function runOracleTest() {
@@ -96,7 +94,7 @@ async function runOracleTest() {
   const dummyBuyer = buyerAccount.address.toLowerCase();
   const dummySeller = sellerAccount.address.toLowerCase();
   
-  // Lấy danh sách 5 Trọng tài
+  // Lấy danh sách 3 Trọng tài
   const jurorAccounts = HARDHAT_KEYS.slice(3).map(k => privateKeyToAccount(k));
   const jurorAddresses = jurorAccounts.map(a => a.address.toLowerCase());
 
@@ -104,6 +102,9 @@ async function runOracleTest() {
   const dummyAuctionId = 8888;
 
   try {
+    // Truncate DB trước khi chạy để tránh lỗi trùng lặp dữ liệu
+    await pool.query('TRUNCATE bids, auctions, disputes, dispute_votes, swap_history, user_profiles, user_transactions CASCADE');
+
     // ----------------------------------------------------
     // BƯỚC 0: Mua ADF từ Pool cho deployer để có số dư phát cho Trọng tài
     // ----------------------------------------------------
@@ -134,9 +135,9 @@ async function runOracleTest() {
     console.log('      Successfully bought ADF from Pool for deployer.');
 
     // ----------------------------------------------------
-    // BƯỚC 1: Thực hiện Stake ADF on-chain cho 5 Juror
+    // BƯỚC 1: Thực hiện Stake ADF on-chain cho 3 Juror
     // ----------------------------------------------------
-    console.log('   🔗 Staking ADF on-chain for 5 Juror...');
+    console.log('   🔗 Staking ADF on-chain for 3 Juror...');
 
     const adfAddress = CONTRACT_ADDRESSES.ADF;
     const disputeAddress = CONTRACT_ADDRESSES.DisputeResolution;

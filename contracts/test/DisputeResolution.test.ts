@@ -37,7 +37,7 @@ describe("DisputeResolution Staking Test", async function () {
             assert.equal(await dispute.read.MIN_JUROR_STAKE(), 500n * unit);
             assert.equal(await dispute.read.JUROR_REWARD(), 50n * unit);
             assert.equal(await dispute.read.JUROR_PENALTY(), 100n * unit);
-            assert.equal(await dispute.read.NUM_JURORS(), 5n);
+            assert.equal(await dispute.read.NUM_JURORS(), 3n);
         });
     });
 

@@ -192,6 +192,14 @@ const CreateAuctionModal: React.FC<CreateAuctionModalProps> = ({ nft, onClose, o
   const reservePriceWei = parseUnits(reservePrice || '0', 18);
   const isAdfApproved = !needsAdfApproval || (adfAllowance !== undefined && adfAllowance >= reservePriceWei);
 
+  // Force refetch on mount to avoid stale cache from previous auctions
+  useEffect(() => {
+    refetchApproval();
+    if (needsAdfApproval) {
+      refetchAdfAllowance();
+    }
+  }, [nft.token_id, needsAdfApproval, refetchApproval, refetchAdfAllowance]);
+
   // Helper execution function
   const executeCreateAuction = () => {
     const durationSeconds = getDurationInSeconds();

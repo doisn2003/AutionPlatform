@@ -32,16 +32,16 @@ describe("ADF Token", async function () {
     });
 
     describe("Tính năng Faucet", function () {
-        it("Cho phép người dùng gọi faucet nhận 10 ADF", async function () {
+        it("Cho phép người dùng gọi faucet nhận 100 ADF", async function () {
             const { adf, user1 } = await networkHelpers.loadFixture(deployADF);
             
             const decimals = await adf.read.decimals();
-            const tenADF = 10n * 10n ** BigInt(decimals);
+            const hundredADF = 100n * 10n ** BigInt(decimals);
             
             await adf.write.faucet({ account: user1.account });
             
             const user1Balance = await adf.read.balanceOf([user1.account.address]);
-            assert.equal(user1Balance, tenADF);
+            assert.equal(user1Balance, hundredADF);
         });
     });
 

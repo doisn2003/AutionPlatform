@@ -290,8 +290,8 @@ const Reputation: React.FC = () => {
     unstakeJuror(amountWei);
   };
 
-  // Filter top 5 jurors
-  const activeJurors = users.filter(u => u.juror_eligible).slice(0, 5);
+  // Filter top 3 jurors
+  const activeJurors = users.filter(u => u.juror_eligible).slice(0, 3);
 
   const getRankBadge = (rank: number) => {
     if (rank === 1) return <Trophy size={20} style={{ color: '#fbbf24' }} />; // Gold
@@ -325,11 +325,11 @@ const Reputation: React.FC = () => {
           </p>
         </div>
 
-        {/* Top 5 Juror Pool Banner */}
+        {/* Top 3 Juror Pool Banner */}
         <div style={{ background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.06)', padding: '1.5rem 2rem', marginBottom: '2rem' }}>
           <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#fff', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <ShieldCheck size={22} style={{ color: '#818cf8' }} />
-            Danh sách 5 Trọng Tài (Jurors) Hiện Tại
+            Danh sách 3 Trọng Tài (Jurors) Hiện Tại
           </h3>
           {activeJurors.length === 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.9rem', background: 'rgba(0,0,0,0.15)', padding: '1rem', borderRadius: '14px' }}>

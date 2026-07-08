@@ -236,9 +236,9 @@
       },
       {
         "indexed": false,
-        "internalType": "address[5]",
+        "internalType": "address[3]",
         "name": "jurors",
-        "type": "address[5]"
+        "type": "address[3]"
       }
     ],
     "name": "JurorsAssigned",
@@ -855,9 +855,9 @@
         "type": "uint256"
       },
       {
-        "internalType": "address[5]",
+        "internalType": "address[3]",
         "name": "_jurors",
-        "type": "address[5]"
+        "type": "address[3]"
       }
     ],
     "name": "setJurors",

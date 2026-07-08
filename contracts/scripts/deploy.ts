@@ -84,10 +84,10 @@ async function main() {
   await disputeResolution.write.setDurations([180n, 180n, 180n], { account: deployer.account });
   console.log("   ✅ Cross-linkings completed successfully!\n");
 
-  // ---- Bước 6: Seed 5 Trọng Tài (Jurors) — Accounts #16-#20 (index 15-19) ----
-  console.log("⚖️ [6/6] Seeding 5 Jurors (Accounts #16-#20)...");
+  // ---- Bước 6: Seed 3 Trọng Tài (Jurors) — Accounts #16-#18 (index 15-17) ----
+  console.log("⚖️ [6/6] Seeding 3 Jurors (Accounts #16-#18)...");
   const allWallets = await viem.getWalletClients();
-  const jurorWallets = allWallets.slice(15, 20); // index 15, 16, 17, 18, 19
+  const jurorWallets = allWallets.slice(15, 18); // index 15, 16, 17
   const stakeAmount = 500n * 10n ** BigInt(decimals); // 500 ADF
 
   const jurorAddresses: string[] = [];
@@ -110,7 +110,7 @@ async function main() {
 
     console.log(`   ✅ Juror #${i + 1} (Account #${15 + i + 1}): ${jurorAddr} — Staked 500 ADF`);
   }
-  console.log(`   🎯 5 Jurors seeded successfully!\n`);
+  console.log(`   🎯 3 Jurors seeded successfully!\n`);
 
   // ---- Ghi địa chỉ ra file ----
   const addresses = {
