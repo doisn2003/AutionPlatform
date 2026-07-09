@@ -40,7 +40,7 @@ export async function assignJurorsAutomatically(disputeId: number, auctionId: nu
     const sellerLower = seller.toLowerCase();
     const buyerLower = buyer ? buyer.toLowerCase() : '';
 
-    // 3. Truy vấn lấy ra Top 3 trọng tài có reputation_score cao nhất và đủ điều kiện làm Juror
+    // 3. Truy vấn lấy ra Top 3 trọng tài có reputation_score cao nhất
     const jurorsRes = await pool.query(
       `SELECT wallet_address, reputation_score 
        FROM user_profiles 
@@ -53,11 +53,39 @@ export async function assignJurorsAutomatically(disputeId: number, auctionId: nu
     );
 
     if (jurorsRes.rows.length < 3) {
-      console.warn(`   ⚠️ Oracle: Only found ${jurorsRes.rows.length} eligible jurors. Required 3. Oracle waits.`);
+      console.warn(`   ⚠️ Oracle: Only found ${jurorsRes.rows.length} eligible jurors in DB. Required 3. Oracle waits.`);
       return;
     }
 
-    const selectedJurors = jurorsRes.rows.map(row => row.wallet_address);
+    const selectedJurors: string[] = [];
+    const MIN_STAKE = 500n * 10n ** 18n;
+
+    // Kiểm tra trực tiếp số dư stake trên smart contract để đảm bảo không bị lỗi "Juror insufficient stake"
+    for (const row of jurorsRes.rows) {
+      try {
+        const stake = await publicClient.readContract({
+          address: CONTRACT_ADDRESSES.DisputeResolution as `0x${string}`,
+          abi: DISPUTE_RESOLUTION_ABI,
+          functionName: 'jurorStakes',
+          args: [row.wallet_address as `0x${string}`]
+        }) as bigint;
+
+        if (stake >= MIN_STAKE) {
+          selectedJurors.push(row.wallet_address);
+          if (selectedJurors.length === 3) break;
+        } else {
+          console.warn(`   ⚠️ Oracle: Juror ${row.wallet_address} has insufficient on-chain stake (${stake.toString()}). Skipping.`);
+        }
+      } catch (err) {
+        console.error(`   ❌ Oracle: Error reading stake for juror ${row.wallet_address}:`, err);
+      }
+    }
+
+    if (selectedJurors.length < 3) {
+      console.warn(`   ⚠️ Oracle: Only found ${selectedJurors.length} eligible jurors ON-CHAIN. Required 3. Oracle waits.`);
+      return;
+    }
+
     console.log(`   Selected Top 3 Jurors:`, selectedJurors);
 
     // 4. Gửi giao dịch setJurors lên blockchain bằng ví Oracle

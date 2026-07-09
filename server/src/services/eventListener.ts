@@ -1042,26 +1042,36 @@ async function handleDisputeResolved(event: any): Promise<void> {
       await pool.query(`UPDATE auctions SET phase = 'RESOLVED' WHERE auction_id = $1`, [auction_id]);
 
       const isBuyerWinner = winnerAddress === buyer.toLowerCase();
+      const isGameTheoryBurn = winnerAddress === '0x0000000000000000000000000000000000000000';
       const buyerProfile = buyer.toLowerCase();
       const sellerProfile = seller.toLowerCase();
 
-      // Cập nhật thống kê thắng/thua
-      if (isBuyerWinner) {
-        await incrementUserStat(buyerProfile, 'total_disputes_won');
-        await incrementUserStat(sellerProfile, 'total_disputes_lost');
-      } else {
-        await incrementUserStat(sellerProfile, 'total_disputes_won');
-        await incrementUserStat(buyerProfile, 'total_disputes_lost');
+      // Cập nhật thống kê thắng/thua (Chỉ cập nhật nếu không phải Game Theory Burn)
+      if (!isGameTheoryBurn) {
+        if (isBuyerWinner) {
+          await incrementUserStat(buyerProfile, 'total_disputes_won');
+          await incrementUserStat(sellerProfile, 'total_disputes_lost');
+        } else {
+          await incrementUserStat(sellerProfile, 'total_disputes_won');
+          await incrementUserStat(buyerProfile, 'total_disputes_lost');
+        }
       }
 
       // Cập nhật quyền sở hữu NFT trong cơ sở dữ liệu:
+      // - Nếu Game Theory Burn -> Giao dịch hủy -> NFT trả về cho Seller
       // - Nếu Buyer thắng -> Giao dịch hủy -> NFT trả về cho Seller
       // - Nếu Seller thắng -> Giao dịch hoàn tất -> NFT chuyển sang Buyer
       const auctionRes = await pool.query(`SELECT nft_token_id FROM auctions WHERE auction_id = $1`, [auction_id]);
       if (auctionRes.rows.length > 0) {
         const nftTokenId = Number(auctionRes.rows[0].nft_token_id);
-        const nftNewOwner = isBuyerWinner ? sellerProfile : buyerProfile;
         
+        let nftNewOwner = '';
+        if (isGameTheoryBurn) {
+          nftNewOwner = sellerProfile;
+        } else {
+          nftNewOwner = isBuyerWinner ? sellerProfile : buyerProfile;
+        }
+
         await pool.query(
           `UPDATE nfts SET owner = $1 WHERE token_id = $2`,
           [nftNewOwner, nftTokenId]

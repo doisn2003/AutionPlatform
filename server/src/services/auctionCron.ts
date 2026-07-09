@@ -76,9 +76,12 @@ async function checkAndUpdateDisputes(): Promise<void> {
   try {
     const [oracleAccount] = await walletClient.getAddresses();
 
-    // Lấy tất cả các tranh chấp chưa được đánh dấu là resolved trong DB
+    // Lấy tất cả các tranh chấp chưa được đánh dấu là resolved trong DB kèm theo dispute_type từ bảng auctions
     const activeDisputes = await pool.query(
-      `SELECT dispute_id, auction_id, phase, resolved FROM disputes WHERE resolved = false`
+      `SELECT d.dispute_id, d.auction_id, d.phase, d.resolved, a.dispute_type 
+       FROM disputes d
+       JOIN auctions a ON d.auction_id = a.auction_id
+       WHERE d.resolved = false`
     );
 
     if (activeDisputes.rows.length === 0) return;
@@ -98,6 +101,14 @@ async function checkAndUpdateDisputes(): Promise<void> {
       const disputeId = Number(d.dispute_id);
       const auctionId = Number(d.auction_id);
       const dbPhase = d.phase;
+      const disputeType = d.dispute_type;
+      
+      const isGameTheory = Number(disputeType) === 1 || disputeType === 'GAME_THEORY_ESCROW';
+      
+      if (isGameTheory) {
+        // Game Theory không sử dụng Oracle hay pha giải quyết của Jury Voting, bỏ qua
+        continue;
+      }
 
       try {
         // Đọc trạng thái on-chain trực tiếp của tranh chấp này

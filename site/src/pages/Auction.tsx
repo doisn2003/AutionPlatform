@@ -14,11 +14,11 @@ import { resolveIPFS } from '../hooks/useNFTImage';
 import { type AuctionFromAPI } from '../hooks/useAuctions';
 import styles from './Auction.module.css';
 
-import { 
-  Clock, 
-  Scale, 
-  Eye, 
-  Award, 
+import {
+  Clock,
+  Scale,
+  Eye,
+  Award,
   AlertTriangle,
   MessageSquare,
   Send,
@@ -33,7 +33,7 @@ import {
 const Auction: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { isConnected, address: userAddress } = useAccount();
-  
+
   // Data state
   const [auction, setAuction] = useState<AuctionFromAPI | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,19 +43,19 @@ const Auction: React.FC = () => {
   const { data: allowance, refetch: refetchAllowance } = useADFAllowance(userAddress);
 
   // Web3 action hooks
-  const { 
-    approve: approveADF, 
-    isPending: isApproving, 
-    isConfirming: isAdfConfirming, 
-    isConfirmed: isAdfConfirmed 
+  const {
+    approve: approveADF,
+    isPending: isApproving,
+    isConfirming: isAdfConfirming,
+    isConfirmed: isAdfConfirmed
   } = useApproveADF();
 
-  const { 
-    bid, 
-    isPending: isBidding, 
-    isConfirming: isBidConfirming, 
-    isConfirmed: isBidConfirmed, 
-    error: bidError 
+  const {
+    bid,
+    isPending: isBidding,
+    isConfirming: isBidConfirming,
+    isConfirmed: isBidConfirmed,
+    error: bidError
   } = useBid();
 
   const {
@@ -166,7 +166,7 @@ const Auction: React.FC = () => {
     newSocket.on('message', (msgData: any) => {
       const date = new Date(msgData.timestamp);
       const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-      
+
       // If a bid event is broadcasted, trigger API reload immediately
       if (msgData.isSystem && msgData.message.includes('đã đặt giá thầu')) {
         fetchAuctionDetails();
@@ -176,11 +176,11 @@ const Auction: React.FC = () => {
       setChatMessages(prev => [
         ...prev,
         {
-          user: msgData.sender === 'Hệ thống' 
-            ? 'Hệ thống' 
+          user: msgData.sender === 'Hệ thống'
+            ? 'Hệ thống'
             : msgData.sender.toLowerCase() === userAddress?.toLowerCase()
-            ? 'Bạn'
-            : `${msgData.sender.slice(0, 6)}...${msgData.sender.slice(-4)}`,
+              ? 'Bạn'
+              : `${msgData.sender.slice(0, 6)}...${msgData.sender.slice(-4)}`,
           text: msgData.message,
           time: timeStr,
           isSystem: msgData.isSystem
@@ -231,7 +231,7 @@ const Auction: React.FC = () => {
       setBidAmount('');
       refetchBalance();
       fetchAuctionDetails();
-      
+
       const timer = setTimeout(() => {
         setStep('idle');
       }, 3000);
@@ -263,7 +263,7 @@ const Auction: React.FC = () => {
       setDisputeStep('idle');
       setEvidenceDesc('');
       setSelectedFiles([]);
-      
+
       // Revoke preview urls safely
       previewUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
       setPreviewUrls([]);
@@ -346,7 +346,7 @@ const Auction: React.FC = () => {
     const hrs = Math.floor(totalSeconds / 3600);
     const mins = Math.floor((totalSeconds % 3600) / 60);
     const secs = totalSeconds % 60;
-    
+
     return {
       hours: hrs.toString().padStart(2, '0'),
       minutes: mins.toString().padStart(2, '0'),
@@ -436,7 +436,7 @@ const Auction: React.FC = () => {
     switch (currentPhase) {
       case 'ESCROW_HOLDING': {
         const isExpired = auction.escrow_deadline ? new Date(auction.escrow_deadline).getTime() <= Date.now() : false;
-        
+
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ background: 'rgba(242, 202, 80, 0.05)', border: '1px solid rgba(242, 202, 80, 0.15)', padding: '12px', borderRadius: '12px' }}>
@@ -454,7 +454,7 @@ const Auction: React.FC = () => {
                 <button
                   className="btn btn-primary w-full"
                   onClick={() => {
-                    if(confirm("Bạn có chắc chắn xác nhận đã nhận hàng đúng mô tả? Hành động này sẽ giải phóng tiền cho người bán và không thể hoàn tác.")) {
+                    if (confirm("Bạn có chắc chắn xác nhận đã nhận hàng đúng mô tả? Hành động này sẽ giải phóng tiền cho người bán và không thể hoàn tác.")) {
                       confirmDelivery(BigInt(auction.auction_id));
                     }
                   }}
@@ -463,7 +463,7 @@ const Auction: React.FC = () => {
                 >
                   {isConfirmingDelivery || isDeliveryTxConfirming ? 'Đang giao dịch...' : 'XÁC NHẬN ĐÃ NHẬN HÀNG'}
                 </button>
-                
+
                 {!isExpired && (
                   <button
                     className="btn btn-outline w-full"
@@ -570,7 +570,7 @@ const Auction: React.FC = () => {
       if (e.target.files && e.target.files.length > 0) {
         const filesArray = Array.from(e.target.files);
         setSelectedFiles(prev => [...prev, ...filesArray]);
-        
+
         const urls = filesArray.map(file => URL.createObjectURL(file));
         setPreviewUrls(prev => [...prev, ...urls]);
       }
@@ -585,8 +585,23 @@ const Auction: React.FC = () => {
       });
     };
 
+    const isGameTheory = Number(auction!.dispute_type) === 1 || auction!.dispute_type === 'GAME_THEORY_ESCROW';
+
     const handleDisputeSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+
+      if (isGameTheory) {
+        try {
+          setDisputeStep('submitting');
+          openDispute(BigInt(auction!.auction_id), "Game Theory Escrow Delivery Failed");
+        } catch (err: any) {
+          console.error(err);
+          setDisputeStep('error');
+          setDisputeErrMsg(err.message || 'Mở tranh chấp thất bại.');
+        }
+        return;
+      }
+
       if (!evidenceDesc.trim()) {
         alert("Vui lòng nhập mô tả chi tiết khiếu nại.");
         return;
@@ -634,7 +649,7 @@ const Auction: React.FC = () => {
     };
 
     return (
-      <div 
+      <div
         style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
@@ -647,7 +662,7 @@ const Auction: React.FC = () => {
           }
         }}
       >
-        <div 
+        <div
           className="glass-panel"
           style={{
             maxWidth: '550px', width: '100%', padding: '2rem',
@@ -664,70 +679,81 @@ const Auction: React.FC = () => {
 
           {disputeStep === 'idle' && (
             <form onSubmit={handleDisputeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <p style={{ color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.4', margin: 0 }}>
-                Bạn đang yêu cầu mở phiên tranh chấp cho đấu giá #{auction!.auction_id}. Vui lòng mô tả vấn đề và cung cấp bằng chứng hình ảnh (ảnh chụp vật phẩm bị lỗi/giả) để gửi tới Bồi thẩm đoàn.
-              </p>
-
-              {/* Mô tả bằng chữ */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.8rem', color: '#e2e8f0', fontWeight: '600' }}>Mô tả chi tiết sự việc *</label>
-                <textarea
-                  className={styles.chatInput}
-                  value={evidenceDesc}
-                  onChange={(e) => setEvidenceDesc(e.target.value)}
-                  placeholder="Mô tả cụ thể vấn đề bạn gặp phải với tài sản bàn giao..."
-                  required
-                  style={{
-                    minHeight: '80px', padding: '10px',
-                    background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px', color: '#fff', resize: 'vertical', fontSize: '0.85rem'
-                  }}
-                />
-              </div>
-
-              {/* Upload Zone & Preview Grid (Giống đúc Mint.tsx) */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '0.8rem', color: '#e2e8f0', fontWeight: '600' }}>Hình ảnh bằng chứng *</label>
-                
-                <div 
-                  className={styles.uploadDropzone} 
-                  onClick={() => document.getElementById('evidenceFileInput')?.click()}
-                  style={{ minHeight: '100px', borderStyle: 'dashed' }}
-                >
-                  <input 
-                    type="file" 
-                    id="evidenceFileInput" 
-                    accept="image/*" 
-                    multiple 
-                    style={{ display: 'none' }} 
-                    onChange={handleFileChange} 
-                  />
-                  <span className={`material-symbols-outlined ${styles.uploadIcon}`} style={{ fontSize: '1.8rem' }}>cloud_upload</span>
-                  <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#fff' }}>Chọn hình ảnh bằng chứng</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Hỗ trợ nhiều ảnh PNG, JPG.</div>
+              {isGameTheory ? (
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '1rem', borderRadius: '8px' }}>
+                  <p style={{ color: '#ef4444', fontSize: '0.85rem', lineHeight: '1.5', margin: 0 }}>
+                    <strong>CẢNH BÁO:</strong> Bạn đang yêu cầu xác nhận <strong>Bàn giao thất bại</strong>. Do phiên này sử dụng cơ chế bảo vệ Lý thuyết trò chơi, hành động này sẽ ngay lập tức khóa toàn bộ cọc ký quỹ của hai bên và tiền thầu.<br/><br/>
+                    Sau khi bấm nút bên dưới, hệ thống sẽ mở trạng thái tranh chấp. Một trong hai bên có thể kích hoạt Đốt cọc ngay sau đó để hủy phiên.
+                  </p>
                 </div>
+              ) : (
+                <>
+                  <p style={{ color: '#94a3b8', fontSize: '0.85rem', lineHeight: '1.4', margin: 0 }}>
+                    Bạn đang yêu cầu mở phiên tranh chấp cho đấu giá #{auction!.auction_id}. Vui lòng mô tả vấn đề và cung cấp bằng chứng hình ảnh (ảnh chụp vật phẩm bị lỗi/giả) để gửi tới Bồi thẩm đoàn.
+                  </p>
 
-                {previewUrls.length > 0 && (
-                  <div className={styles.uploadPreviewGrid}>
-                    {previewUrls.map((url, index) => (
-                      <div 
-                        key={index} 
-                        className={styles.uploadPreviewItem} 
-                        onClick={(e) => { e.stopPropagation(); setEnlargedImage(url); }}
-                      >
-                        <img src={url} alt={`Preview ${index}`} className={styles.uploadPreviewImg} />
-                        <button 
-                          type="button" 
-                          className={styles.removePreviewBtn}
-                          onClick={(e) => removeFile(e, index)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
+                  {/* Mô tả bằng chữ */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.8rem', color: '#e2e8f0', fontWeight: '600' }}>Mô tả chi tiết sự việc *</label>
+                    <textarea
+                      className={styles.chatInput}
+                      value={evidenceDesc}
+                      onChange={(e) => setEvidenceDesc(e.target.value)}
+                      placeholder="Mô tả cụ thể vấn đề bạn gặp phải với tài sản bàn giao..."
+                      required
+                      style={{
+                        minHeight: '80px', padding: '10px',
+                        background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px', color: '#fff', resize: 'vertical', fontSize: '0.85rem'
+                      }}
+                    />
                   </div>
-                )}
-              </div>
+
+                  {/* Upload Zone & Preview Grid (Giống đúc Mint.tsx) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '0.8rem', color: '#e2e8f0', fontWeight: '600' }}>Hình ảnh bằng chứng *</label>
+
+                    <div
+                      className={styles.uploadDropzone}
+                      onClick={() => document.getElementById('evidenceFileInput')?.click()}
+                      style={{ minHeight: '100px', borderStyle: 'dashed' }}
+                    >
+                      <input
+                        type="file"
+                        id="evidenceFileInput"
+                        accept="image/*"
+                        multiple
+                        style={{ display: 'none' }}
+                        onChange={handleFileChange}
+                      />
+                      <span className={`material-symbols-outlined ${styles.uploadIcon}`} style={{ fontSize: '1.8rem' }}>cloud_upload</span>
+                      <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#fff' }}>Chọn hình ảnh bằng chứng</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Hỗ trợ nhiều ảnh PNG, JPG.</div>
+                    </div>
+
+                    {previewUrls.length > 0 && (
+                      <div className={styles.uploadPreviewGrid}>
+                        {previewUrls.map((url, index) => (
+                          <div
+                            key={index}
+                            className={styles.uploadPreviewItem}
+                            onClick={(e) => { e.stopPropagation(); setEnlargedImage(url); }}
+                          >
+                            <img src={url} alt={`Preview ${index}`} className={styles.uploadPreviewImg} />
+                            <button
+                              type="button"
+                              className={styles.removePreviewBtn}
+                              onClick={(e) => removeFile(e, index)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button
@@ -743,7 +769,7 @@ const Auction: React.FC = () => {
                   className="btn btn-primary"
                   style={{ flex: 1, padding: '10px', background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', border: 'none' }}
                 >
-                  GỬI KHIẾU NẠI
+                  {isGameTheory ? 'BÀN GIAO THẤT BẠI' : 'GỬI KHIẾU NẠI'}
                 </button>
               </div>
             </form>
@@ -770,9 +796,9 @@ const Auction: React.FC = () => {
               <AlertCircle size={40} style={{ color: '#ef4444' }} />
               <p style={{ color: '#ef4444', fontWeight: 'bold', margin: 0 }}>Mở tranh chấp thất bại</p>
               <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{disputeErrMsg}</span>
-              <button 
-                type="button" 
-                className="btn btn-outline" 
+              <button
+                type="button"
+                className="btn btn-outline"
                 onClick={() => setDisputeStep('idle')}
                 style={{ marginTop: '1rem', width: '120px' }}
               >
@@ -799,7 +825,7 @@ const Auction: React.FC = () => {
   return (
     <Layout>
       <div className={styles.container}>
-        
+
         {/* ROOM HEADER (Information 1) */}
         <div className={styles.roomHeader}>
           <div>
@@ -818,7 +844,7 @@ const Auction: React.FC = () => {
               {auction.name || `Tác phẩm #${auction.nft_token_id}`}
             </h1>
           </div>
-          
+
           {auction.asset_type === 'PHYSICAL' && (
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', textAlign: 'right' }}>Cơ chế bảo vệ</span>
@@ -834,10 +860,10 @@ const Auction: React.FC = () => {
 
         {/* MAIN LAYOUT */}
         <div className={styles.mainLayout}>
-          
+
           {/* LEFT COLUMN: NFT Preview, Countdown, Bidding Box */}
           <div className={styles.leftCol}>
-            
+
             {/* NFTDetailPreview Component */}
             <div className={`glass-panel ${styles.previewWrapper}`}>
               <NFTDetailPreview nft={nftObj} />
@@ -849,7 +875,7 @@ const Auction: React.FC = () => {
                 <Clock size={14} />
                 <span>Thời gian còn lại</span>
               </div>
-              
+
               <div className={styles.timeGrid}>
                 <div className={styles.timeBlock}>{timerData.hours}</div>
                 <span className={styles.timeColon}>:</span>
@@ -914,7 +940,7 @@ const Auction: React.FC = () => {
 
                   <div className={styles.bidInputRow}>
                     <div className={styles.inputWrapper}>
-                      <input 
+                      <input
                         type="number"
                         className={styles.bidInput}
                         value={bidAmount}
@@ -926,9 +952,9 @@ const Auction: React.FC = () => {
                       />
                       <span className={styles.inputSuffix}>ADF</span>
                     </div>
-                    
-                    <button 
-                      type="button" 
+
+                    <button
+                      type="button"
                       className={styles.bidMinBtn}
                       onClick={() => setBidAmount(minimumBid.toFixed(2))}
                       disabled={step === 'approving_adf' || step === 'bidding'}
@@ -959,7 +985,7 @@ const Auction: React.FC = () => {
                     <div style={{ padding: '10px', background: 'rgba(242, 202, 80, 0.05)', border: '1px solid rgba(242, 202, 80, 0.1)', borderRadius: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                       <ShieldAlert size={14} className="text-gold" style={{ marginTop: '2px', flexShrink: 0 }} />
                       <div>
-                        Yêu cầu cọc ký quỹ thêm <strong className="text-gold">{reservePrice} ADF</strong>. 
+                        Yêu cầu cọc ký quỹ thêm <strong className="text-gold">{reservePrice} ADF</strong>.
                         Tổng số ADF cần có trong ví: <strong className="text-gold">{(inputAmount + buyerDepositFloat).toFixed(2)} ADF</strong>.
                         (Cọc sẽ được tự động hoàn lại nếu bạn bị ví khác outbid).
                       </div>
@@ -975,11 +1001,11 @@ const Auction: React.FC = () => {
 
           {/* RIGHT COLUMN: Technical onchain details, Live Chat Room */}
           <div className={styles.rightCol}>
-            
+
             {/* TECHNICAL DETAILS */}
             <div className={`glass-panel ${styles.technicalCard}`}>
               <h4 className={styles.technicalTitle}>Thông tin kỹ thuật (On-chain)</h4>
-              
+
               <div className={styles.technicalGrid}>
                 <div className={styles.technicalItem}>
                   <span className={styles.technicalLabel}>Nhãn thuộc tính</span>
@@ -1039,10 +1065,10 @@ const Auction: React.FC = () => {
                 {auction.token_uri && (
                   <div className={styles.technicalItem}>
                     <span className={styles.technicalLabel}>Metadata IPFS</span>
-                    <a 
+                    <a
                       href={resolveIPFS(auction.token_uri)}
-                      target="_blank" 
-                      rel="noopener noreferrer" 
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className={`${styles.technicalValue} ${styles.valueLink} ${styles.valueMono}`}
                       style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
                     >
@@ -1074,15 +1100,14 @@ const Auction: React.FC = () => {
                   </div>
                 ) : (
                   chatMessages.map((msg, i) => (
-                    <div 
-                      key={i} 
+                    <div
+                      key={i}
                       className={`${styles.messageItem} ${msg.isSystem ? styles.messageSystem : ''}`}
                     >
                       <div className={styles.messageMeta}>
-                        <span 
-                          className={`${styles.messageSender} ${
-                            msg.isSystem ? styles.senderSystem : msg.user === 'Bạn' ? styles.senderMe : ''
-                          }`}
+                        <span
+                          className={`${styles.messageSender} ${msg.isSystem ? styles.senderSystem : msg.user === 'Bạn' ? styles.senderMe : ''
+                            }`}
                         >
                           {msg.user}
                         </span>
@@ -1097,7 +1122,7 @@ const Auction: React.FC = () => {
 
               {/* Chat Send Form */}
               <form onSubmit={handleSendChat} className={styles.chatInputForm}>
-                <input 
+                <input
                   type="text"
                   className={styles.chatInput}
                   value={myMessage}
@@ -1105,8 +1130,8 @@ const Auction: React.FC = () => {
                   placeholder={isConnected ? "Nhập tin nhắn..." : "Vui lòng kết nối ví để nhắn..."}
                   disabled={!isConnected || !isSocketConnected}
                 />
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="btn btn-outline btn-sm styles.chatSendBtn"
                   disabled={!isConnected || !isSocketConnected || !myMessage.trim()}
                   style={{ display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '30px', padding: '0 16px' }}
@@ -1124,7 +1149,7 @@ const Auction: React.FC = () => {
       </div>
       {showDisputeModal && renderDisputeModal()}
       {enlargedImage && (
-        <div 
+        <div
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center',
@@ -1132,10 +1157,10 @@ const Auction: React.FC = () => {
           }}
           onClick={() => setEnlargedImage(null)}
         >
-          <img 
-            src={enlargedImage} 
-            alt="Enlarged" 
-            style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', borderRadius: '8px', border: '2px solid rgba(255,255,255,0.1)' }} 
+          <img
+            src={enlargedImage}
+            alt="Enlarged"
+            style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', borderRadius: '8px', border: '2px solid rgba(255,255,255,0.1)' }}
           />
         </div>
       )}

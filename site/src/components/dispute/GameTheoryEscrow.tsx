@@ -200,7 +200,9 @@ const GameTheoryEscrow: React.FC<GameTheoryEscrowProps> = ({ auction, userAddres
           <NFTDetailPreview
             nft={{
               token_id: auction.nft_token_id,
-              owner: phase === 'RESOLVED' ? auction.current_top_bidder : auction.seller,
+              owner: phase === 'RESOLVED' 
+                ? (auction.dispute_id ? auction.seller : auction.current_top_bidder) 
+                : auction.seller,
               name: auction.name || `Vật phẩm #${auction.nft_token_id}`,
               image: auction.image || '',
               token_uri: auction.token_uri || '',
