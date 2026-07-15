@@ -11,6 +11,7 @@ import MockHome from './pages/mock/MockHome';
 import MockNFTDetail from './pages/mock/MockNFTDetail';
 import MockAuctionRoom from './pages/mock/MockAuctionRoom';
 import MockDisputeResolution from './pages/mock/MockDisputeResolution';
+import Faucet from './pages/Faucet';
 import './styles/global.css';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
         <Route path="/auction/:id" element={<Auction />} />
         <Route path="/dispute" element={<Dispute />} />
         <Route path="/dispute/:id" element={<Dispute />} />
+        <Route path="/faucet" element={<Faucet />} />
         
         {/* Mock Routes for Thesis screenshots */}
         <Route path="/mock-home" element={<MockHome />} />

@@ -1,0 +1,187 @@
+.faucetContainer {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 20px;
+  color: #e0e0e0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.headerSection {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.title {
+  font-size: 2.8rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f2ca50 0%, #f9a825 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 15px;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: #888888;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.stepsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+.stepCard {
+  background: rgba(22, 22, 22, 0.7);
+  border: 1px solid rgba(242, 202, 80, 0.1);
+  border-radius: 16px;
+  padding: 30px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.stepCard:hover {
+  transform: translateY(-5px);
+  border-color: rgba(242, 202, 80, 0.3);
+  box-shadow: 0 10px 30px rgba(242, 202, 80, 0.05);
+}
+
+.badge {
+  position: absolute;
+  top: 30px;
+  right: 30px;
+  background: rgba(242, 202, 80, 0.1);
+  color: #f2ca50;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid rgba(242, 202, 80, 0.2);
+}
+
+.stepTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stepIcon {
+  color: #f2ca50;
+  font-size: 1.8rem;
+}
+
+.instructionList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 25px 0;
+}
+
+.instructionList li {
+  position: relative;
+  padding-left: 28px;
+  margin-bottom: 15px;
+  line-height: 1.6;
+  color: #b0b0b0;
+  font-size: 1rem;
+}
+
+.instructionList li::before {
+  content: "check_circle";
+  font-family: 'Material Symbols Outlined';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  color: #f2ca50;
+  font-size: 18px;
+}
+
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #f2ca50 0%, #f9a825 100%);
+  color: #0d0d0d;
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(242, 202, 80, 0.3);
+  filter: brightness(1.1);
+}
+
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.btnSecondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.faucetWidgetBox {
+  background: rgba(242, 202, 80, 0.03);
+  border: 1px dashed rgba(242, 202, 80, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 15px;
+  text-align: center;
+}
+
+.faucetWidgetBox p {
+  margin: 0 0 15px 0;
+  color: #b0b0b0;
+  font-size: 0.95rem;
+}
+
+.walletStatus {
+  margin-top: 30px;
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(255, 59, 48, 0.05);
+  border: 1px solid rgba(255, 59, 48, 0.15);
+  color: #ff453a;
+  text-align: center;
+}
+
+.walletConnected {
+  background: rgba(48, 209, 88, 0.05);
+  border: 1px solid rgba(48, 209, 88, 0.15);
+  color: #30d158;
+}

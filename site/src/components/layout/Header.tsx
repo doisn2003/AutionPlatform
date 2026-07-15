@@ -50,6 +50,7 @@ const Header: React.FC = () => {
     { name: 'Giao dịch', path: '/transaction' },
     { name: 'Bàn giao', path: '/dispute' },
     { name: 'Bảng xếp hạng', path: '/reputation' },
+    { name: 'Faucet', path: '/faucet' },
   ];
 
   return (
