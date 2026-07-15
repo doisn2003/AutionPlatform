@@ -23,12 +23,33 @@ export const publicClient = createPublicClient({
 });
 
 // WalletClient dùng cho cron job (endAuction) 
-// Dùng private key deployer từ Hardhat local node (account #0)
-const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined;
+// Dùng private key deployer từ Hardhat local node (account #0) hoặc ví deployer Sepolia
+const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
 
-export const walletClient = DEPLOYER_PRIVATE_KEY
+const getWalletAccount = () => {
+  if (!DEPLOYER_PRIVATE_KEY) return null;
+  
+  let key = DEPLOYER_PRIVATE_KEY.trim();
+  if (!key || key === 'undefined' || key === 'null') return null;
+  
+  // Thêm 0x nếu người dùng copy từ MetaMask bị thiếu
+  if (!key.startsWith('0x')) {
+    key = `0x${key}`;
+  }
+  
+  try {
+    return privateKeyToAccount(key as `0x${string}`);
+  } catch (err) {
+    console.error('❌ Failed to parse DEPLOYER_PRIVATE_KEY:', err);
+    return null;
+  }
+};
+
+const account = getWalletAccount();
+
+export const walletClient = account
   ? createWalletClient({
-      account: privateKeyToAccount(DEPLOYER_PRIVATE_KEY),
+      account,
       chain: activeChain,
       transport: http(RPC_URL),
     })

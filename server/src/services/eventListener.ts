@@ -18,12 +18,19 @@ async function catchupEvents(): Promise<void> {
 
   // Lấy block cuối đã sync
   const syncResult = await pool.query('SELECT last_synced_block FROM sync_state WHERE id = 1');
-  const fromBlock = BigInt(syncResult.rows[0]?.last_synced_block || 0);
+  let fromBlock = BigInt(syncResult.rows[0]?.last_synced_block || 0);
   const currentBlock = await publicClient.getBlockNumber();
 
   if (fromBlock >= currentBlock) {
     console.log('   ✅ Already up to date');
     return;
+  }
+
+  // Nếu là Sepolia và khoảng cách quá lớn (> 5000 block), clamp lại để tránh giới hạn RPC của Infura/Alchemy
+  const isSepolia = publicClient.chain.id === 11155111;
+  if (isSepolia && (fromBlock === 0n || currentBlock - fromBlock > 5000n)) {
+    console.log(`   ⚠️ Block range too large for Sepolia (${currentBlock - fromBlock}). Clamping fromBlock to ${currentBlock - 5000n}`);
+    fromBlock = currentBlock - 5000n;
   }
 
   console.log(`   Syncing from block ${fromBlock} to ${currentBlock}...`);
