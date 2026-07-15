@@ -12,6 +12,15 @@ import { incrementUserStat, recalculateReputation } from './reputationService';
 import { assignJurorsAutomatically } from './oracleService';
 import { broadcastToAuction } from './socketService';
 
+// Override getContractEvents locally to throttle requests and avoid Infura burst rate limits (429)
+// Infura limits free tier to 500 credits/second. eth_getLogs costs 255 credits per request.
+// Hence we can only make at most 1 request every 510ms. We use 600ms to be 100% safe.
+const originalGetContractEvents = publicClient.getContractEvents.bind(publicClient);
+publicClient.getContractEvents = async function (args: any) {
+  await new Promise((resolve) => setTimeout(resolve, 600)); // 600ms delay between event queries
+  return await originalGetContractEvents(args);
+} as any;
+
 // ---- Catchup: Đọc event cũ từ block đã lưu ----
 async function catchupEvents(): Promise<void> {
   console.log('📥 Catching up on missed events...');
