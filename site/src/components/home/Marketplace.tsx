@@ -12,8 +12,7 @@ import styles from './Marketplace.module.css';
 import NFTCard from '../common/NFTCard';
 import BidModal from './BidModal';
 import { useAuctions, type AuctionFromAPI } from '../../hooks/useAuctions';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { API_URL } from '../../config/contracts';
 
 interface AssetCategory {
   id: number;

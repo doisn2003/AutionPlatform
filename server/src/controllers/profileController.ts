@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
+import { parseEther } from 'viem';
 import pool from '../config/db';
 import { ensureUserProfileExists, recalculateReputation } from '../services/reputationService';
+import { walletClient, publicClient } from '../config/blockchain';
+
+const lastFaucetRequest = new Map<string, number>();
 
 export const getProfile = async (req: Request, res: Response): Promise<void> => {
   const { address } = req.params;
@@ -143,5 +147,64 @@ export const mockStake = async (req: Request, res: Response): Promise<void> => {
   } catch (error: any) {
     console.error(`Error mocking stake for ${wallet}:`, error);
     res.status(500).json({ error: 'Failed to process mock stake' });
+  }
+};
+
+export const faucetGas = async (req: Request, res: Response): Promise<void> => {
+  const { walletAddress } = req.body;
+  if (!walletAddress) {
+    res.status(400).json({ error: 'Wallet address is required' });
+    return;
+  }
+
+  const wallet = String(walletAddress).toLowerCase();
+  if (!wallet.startsWith('0x') || wallet.length !== 42) {
+    res.status(400).json({ error: 'Invalid wallet address format' });
+    return;
+  }
+
+  // Rate limiting: 1 request per minute per address
+  const now = Date.now();
+  const lastTime = lastFaucetRequest.get(wallet) || 0;
+  if (now - lastTime < 60000) {
+    res.status(429).json({ error: 'Faucet requested too frequently. Please wait 1 minute.' });
+    return;
+  }
+
+  try {
+    if (!walletClient) {
+      res.status(500).json({ error: 'Server wallet client is not configured.' });
+      return;
+    }
+
+    console.log(`🚰 Faucet: Transferring 0.01 ETH to ${wallet}...`);
+    
+    const [deployerAddress] = await walletClient.getAddresses();
+    
+    // Send 0.01 ETH
+    const txHash = await walletClient.sendTransaction({
+      to: wallet as `0x${string}`,
+      value: parseEther('0.01'),
+      account: deployerAddress,
+    });
+
+    console.log(`   Transaction sent, hash: ${txHash}. Waiting for confirmation...`);
+
+    // Wait for transaction confirmation
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    
+    console.log(`   ✅ Transaction confirmed in block ${receipt.blockNumber.toString()}`);
+    
+    lastFaucetRequest.set(wallet, now);
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Gas faucet transfer completed successfully', 
+      txHash,
+      amount: '0.01 ETH'
+    });
+  } catch (error: any) {
+    console.error(`Error in gas faucet for ${wallet}:`, error);
+    res.status(500).json({ error: error.message || 'Failed to process gas faucet' });
   }
 };

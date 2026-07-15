@@ -6,18 +6,49 @@
  * Mỗi hook trả về { write, isPending, isSuccess, error, data (txHash) }
  */
 
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { useState } from 'react';
 import { parseUnits, maxUint256 } from 'viem';
-import { ADF_ABI, ADF_NFT_ABI, AUCTION_EXCHANGE_ABI, CONTRACT_ADDRESSES, ADF_POOL_ABI, DISPUTE_RESOLUTION_ABI } from '../config/contracts';
+import { ADF_ABI, ADF_NFT_ABI, AUCTION_EXCHANGE_ABI, CONTRACT_ADDRESSES, ADF_POOL_ABI, DISPUTE_RESOLUTION_ABI, API_URL } from '../config/contracts';
 
 // ---- ADF Token Actions ----
 
-/** Gọi ADF.faucet() — Nhận 10 ADF miễn phí */
+/** Gọi ADF.faucet() — Nhận 10 ADF miễn phí & Tự động nhận 0.01 ETH từ Server */
 export function useFaucet() {
-  const { writeContract, data: hash, isPending, isSuccess, error } = useWriteContract();
+  const { address } = useAccount();
+  const { writeContract, data: hash, isPending: isWritePending, isSuccess, error: writeError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
-  const faucet = () => {
+  const [isGasPending, setIsGasPending] = useState(false);
+  const [gasError, setGasError] = useState<Error | null>(null);
+
+  const faucet = async () => {
+    if (!address) return;
+    setIsGasPending(true);
+    setGasError(null);
+    try {
+      console.log(`🚰 Requesting gas faucet from backend for address: ${address}`);
+      const res = await fetch(`${API_URL}/api/profile/faucet-gas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ walletAddress: address }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Failed to request gas faucet');
+      }
+
+      console.log('✅ Gas faucet transfer completed on backend.');
+    } catch (err: any) {
+      console.error('⚠️ Gas faucet failed:', err);
+      setGasError(err);
+    } finally {
+      setIsGasPending(false);
+    }
+
     writeContract({
       address: CONTRACT_ADDRESSES.ADF,
       abi: ADF_ABI,
@@ -25,7 +56,15 @@ export function useFaucet() {
     });
   };
 
-  return { faucet, hash, isPending, isConfirming, isConfirmed, isSuccess, error };
+  return {
+    faucet,
+    hash,
+    isPending: isGasPending || isWritePending,
+    isConfirming,
+    isConfirmed,
+    isSuccess,
+    error: writeError || gasError,
+  };
 }
 
 /** Gọi ADF.approve(spender, amount) — Unlimited approval cho sàn hoặc chỉ định số lượng */

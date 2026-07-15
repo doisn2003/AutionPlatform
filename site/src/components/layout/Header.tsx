@@ -30,9 +30,16 @@ const Header: React.FC = () => {
     if (isConnected) {
       disconnect();
     } else {
+      // Check if Metamask or other wallet extension is installed
+      if (typeof window !== 'undefined' && !(window as any).ethereum) {
+        window.open("https://chromewebstore.google.com/detail/metamask/nkbihfbeogaeaoehlefnkodbefgpgknn?authuser=0&utm_source=app-launcher", "_blank");
+        return;
+      }
       const injectedConnector = connectors[0];
       if (injectedConnector) {
         connect({ connector: injectedConnector });
+      } else {
+        window.open("https://chromewebstore.google.com/detail/metamask/nkbihfbeogaeaoehlefnkodbefgpgknn?authuser=0&utm_source=app-launcher", "_blank");
       }
     }
   };

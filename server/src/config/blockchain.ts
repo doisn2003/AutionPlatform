@@ -6,7 +6,7 @@
  */
 
 import { createPublicClient, createWalletClient, http, type Address } from 'viem';
-import { hardhat } from 'viem/chains';
+import { hardhat, sepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import dotenv from 'dotenv';
 
@@ -14,9 +14,11 @@ dotenv.config();
 
 // ---- Chain Config ----
 const RPC_URL = process.env.RPC_URL || 'http://127.0.0.1:8545';
+const isSepolia = RPC_URL.includes('sepolia');
+const activeChain = isSepolia ? sepolia : hardhat;
 
 export const publicClient = createPublicClient({
-  chain: hardhat,
+  chain: activeChain,
   transport: http(RPC_URL),
 });
 
@@ -27,7 +29,7 @@ const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` |
 export const walletClient = DEPLOYER_PRIVATE_KEY
   ? createWalletClient({
       account: privateKeyToAccount(DEPLOYER_PRIVATE_KEY),
-      chain: hardhat,
+      chain: activeChain,
       transport: http(RPC_URL),
     })
   : null;

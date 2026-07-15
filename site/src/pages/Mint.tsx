@@ -17,8 +17,9 @@ import Layout from '../components/layout/Layout';
 import CreateAuctionModal from '../components/mint/CreateAuctionModal';
 import NFTDetailPreview, { type NFT } from '../components/common/NFTDetailPreview';
 import styles from '../components/mint/Mint.module.css';
+import { API_URL } from '../config/contracts';
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api';
+const API_BASE_URL = `${API_URL}/api`;
 
 // Sub-component for individual NFT Card in the list (to isolate useNFTImage hook)
 interface CollectionCardProps {

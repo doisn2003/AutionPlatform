@@ -40,13 +40,15 @@ async function main() {
   console.log("💧 Adding initial liquidity to ADF_Pool...");
   const decimals = await adf.read.decimals();
   const adfAmount = 1000000n * 10n ** BigInt(decimals); // 1,000,000 ADF
-  const ethAmount = 10n * 10n ** 18n; // 10 ETH
+  
+  const isLocal = hre.network.name === "hardhat" || hre.network.name === "localhost";
+  const ethAmount = isLocal ? (10n * 10n ** 18n) : (5n * 10n ** 17n); // 10 ETH for local, 0.5 ETH for Sepolia
   
   // Approve ADF
   await adf.write.approve([adfPool.address, adfAmount], { account: deployer.account });
   // Add Liquidity
   await adfPool.write.addLiquidity([adfAmount], { account: deployer.account, value: ethAmount });
-  console.log("   ✅ Initial liquidity added: 10 ETH + 1,000,000 ADF\n");
+  console.log(`   ✅ Initial liquidity added: ${isLocal ? "10" : "0.5"} ETH + 1,000,000 ADF\n`);
 
   // ---- Bước 3: Deploy ADF_NFT (ERC721) ----
   console.log("📦 [3/5] Deploying ADF_NFT (ERC721)...");
@@ -86,31 +88,35 @@ async function main() {
 
   // ---- Bước 6: Seed 3 Trọng Tài (Jurors) — Accounts #16-#18 (index 15-17) ----
   console.log("⚖️ [6/6] Seeding 3 Jurors (Accounts #16-#18)...");
-  const allWallets = await viem.getWalletClients();
-  const jurorWallets = allWallets.slice(15, 18); // index 15, 16, 17
-  const stakeAmount = 500n * 10n ** BigInt(decimals); // 500 ADF
-
   const jurorAddresses: string[] = [];
 
-  for (let i = 0; i < jurorWallets.length; i++) {
-    const juror = jurorWallets[i]!;
-    const jurorAddr = juror.account.address;
-    jurorAddresses.push(jurorAddr);
+  if (isLocal) {
+    const allWallets = await viem.getWalletClients();
+    const jurorWallets = allWallets.slice(15, 18); // index 15, 16, 17
+    const stakeAmount = 500n * 10n ** BigInt(decimals); // 500 ADF
 
-    // 1. Juror gọi faucet 5 lần để nhận 500 ADF (100 ADF/lần)
-    for (let f = 0; f < 5; f++) {
-      await adf.write.faucet({ account: juror.account });
+    for (let i = 0; i < jurorWallets.length; i++) {
+      const juror = jurorWallets[i]!;
+      const jurorAddr = juror.account.address;
+      jurorAddresses.push(jurorAddr);
+
+      // 1. Juror gọi faucet 5 lần để nhận 500 ADF (100 ADF/lần)
+      for (let f = 0; f < 5; f++) {
+        await adf.write.faucet({ account: juror.account });
+      }
+
+      // 2. Juror approve DisputeResolution contract
+      await adf.write.approve([disputeResolution.address, stakeAmount], { account: juror.account });
+
+      // 3. Juror stake 500 ADF
+      await disputeResolution.write.stakeForJuror([stakeAmount], { account: juror.account });
+
+      console.log(`   ✅ Juror #${i + 1} (Account #${15 + i + 1}): ${jurorAddr} — Staked 500 ADF`);
     }
-
-    // 2. Juror approve DisputeResolution contract
-    await adf.write.approve([disputeResolution.address, stakeAmount], { account: juror.account });
-
-    // 3. Juror stake 500 ADF
-    await disputeResolution.write.stakeForJuror([stakeAmount], { account: juror.account });
-
-    console.log(`   ✅ Juror #${i + 1} (Account #${15 + i + 1}): ${jurorAddr} — Staked 500 ADF`);
+    console.log(`   🎯 3 Jurors seeded successfully!\n`);
+  } else {
+    console.log("   ⚠️ Skipping automatic juror seeding on public testnet. You must manually stake jurors on-chain from distinct accounts.\n");
   }
-  console.log(`   🎯 3 Jurors seeded successfully!\n`);
 
   // ---- Ghi địa chỉ ra file ----
   const addresses = {
