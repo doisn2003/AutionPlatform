@@ -1066,7 +1066,11 @@ const Auction: React.FC = () => {
                   <div className={styles.technicalItem}>
                     <span className={styles.technicalLabel}>Metadata IPFS</span>
                     <a
-                      href={resolveIPFS(auction.token_uri)}
+                      href={
+                        auction.token_uri.startsWith('ipfs://')
+                          ? `https://gold-keen-wildebeest-44.mypinata.cloud/ipfs/${auction.token_uri.replace('ipfs://', '')}`
+                          : auction.token_uri
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`${styles.technicalValue} ${styles.valueLink} ${styles.valueMono}`}
