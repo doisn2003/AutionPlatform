@@ -163,48 +163,10 @@ export const faucetGas = async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  // Rate limiting: 1 request per minute per address
-  const now = Date.now();
-  const lastTime = lastFaucetRequest.get(wallet) || 0;
-  if (now - lastTime < 60000) {
-    res.status(429).json({ error: 'Faucet requested too frequently. Please wait 1 minute.' });
-    return;
-  }
+  console.log(`🚰 Faucet: Gas faucet bypassed for ${wallet} (users use Google Faucet instead).`);
 
-  try {
-    if (!walletClient) {
-      res.status(500).json({ error: 'Server wallet client is not configured.' });
-      return;
-    }
-
-    console.log(`🚰 Faucet: Transferring 0.01 ETH to ${wallet}...`);
-    
-    const [deployerAddress] = await walletClient.getAddresses();
-    
-    // Send 0.01 ETH
-    const txHash = await walletClient.sendTransaction({
-      to: wallet as `0x${string}`,
-      value: parseEther('0.01'),
-      account: deployerAddress,
-    });
-
-    console.log(`   Transaction sent, hash: ${txHash}. Waiting for confirmation...`);
-
-    // Wait for transaction confirmation
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-    
-    console.log(`   ✅ Transaction confirmed in block ${receipt.blockNumber.toString()}`);
-    
-    lastFaucetRequest.set(wallet, now);
-
-    res.status(200).json({ 
-      success: true, 
-      message: 'Gas faucet transfer completed successfully', 
-      txHash,
-      amount: '0.01 ETH'
-    });
-  } catch (error: any) {
-    console.error(`Error in gas faucet for ${wallet}:`, error);
-    res.status(500).json({ error: error.message || 'Failed to process gas faucet' });
-  }
+  res.status(200).json({ 
+    success: true, 
+    message: 'Gas faucet bypassed successfully.', 
+  });
 };
