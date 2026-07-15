@@ -1059,7 +1059,7 @@ const Auction: React.FC = () => {
 
                 <div className={styles.technicalItem}>
                   <span className={styles.technicalLabel}>Mạng lưới blockchain</span>
-                  <span className={styles.technicalValue}>Hardhat Localhost</span>
+                  <span className={styles.technicalValue}>Sepolia</span> 
                 </div>
 
                 {auction.token_uri && (
