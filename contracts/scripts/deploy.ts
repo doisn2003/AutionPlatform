@@ -17,6 +17,15 @@ import path from "node:path";
 async function main() {
   const { viem } = await hre.network.connect();
   const [deployer] = await viem.getWalletClients();
+  const publicClient = await viem.getPublicClient();
+
+  const sendTx = async (txPromise: Promise<`0x${string}`>, name: string) => {
+    console.log(`   Sending transaction: ${name}...`);
+    const hash = await txPromise;
+    console.log(`      Tx Hash: ${hash}. Waiting for confirmation...`);
+    await publicClient.waitForTransactionReceipt({ hash });
+    console.log(`      ✅ Confirmed!`);
+  };
 
   console.log("=========================================");
   console.log("🚀 BẮT ĐẦU TRIỂN KHAI HỢP ĐỒNG");
@@ -45,9 +54,15 @@ async function main() {
   const ethAmount = isLocal ? (10n * 10n ** 18n) : (5n * 10n ** 17n); // 10 ETH for local, 0.5 ETH for Sepolia
   
   // Approve ADF
-  await adf.write.approve([adfPool.address, adfAmount], { account: deployer.account });
+  await sendTx(
+    adf.write.approve([adfPool.address, adfAmount], { account: deployer.account }),
+    "Approve ADF for Pool"
+  );
   // Add Liquidity
-  await adfPool.write.addLiquidity([adfAmount], { account: deployer.account, value: ethAmount });
+  await sendTx(
+    adfPool.write.addLiquidity([adfAmount], { account: deployer.account, value: ethAmount }),
+    "Add Liquidity to Pool"
+  );
   console.log(`   ✅ Initial liquidity added: ${isLocal ? "10" : "0.5"} ETH + 1,000,000 ADF\n`);
 
   // ---- Bước 3: Deploy ADF_NFT (ERC721) ----
@@ -73,17 +88,35 @@ async function main() {
   // ---- Thiết lập các liên kết chéo (Cross-linking) ----
   console.log("⚙️ Setting up contract cross-linkings...");
   // 1. AuctionExchange.setDisputeContract(DisputeResolution)
-  await auctionExchange.write.setDisputeContract([disputeResolution.address], { account: deployer.account });
+  await sendTx(
+    auctionExchange.write.setDisputeContract([disputeResolution.address], { account: deployer.account }),
+    "AuctionExchange.setDisputeContract"
+  );
   // 2. ADF_Pool.setDisputeContract(DisputeResolution)
-  await adfPool.write.setDisputeContract([disputeResolution.address], { account: deployer.account });
+  await sendTx(
+    adfPool.write.setDisputeContract([disputeResolution.address], { account: deployer.account }),
+    "ADF_Pool.setDisputeContract"
+  );
   // 3. DisputeResolution.setAuctionExchange(AuctionExchange)
-  await disputeResolution.write.setAuctionExchange([auctionExchange.address], { account: deployer.account });
+  await sendTx(
+    disputeResolution.write.setAuctionExchange([auctionExchange.address], { account: deployer.account }),
+    "DisputeResolution.setAuctionExchange"
+  );
   // 4. DisputeResolution.setAdfPool(ADF_Pool)
-  await disputeResolution.write.setAdfPool([adfPool.address], { account: deployer.account });
+  await sendTx(
+    disputeResolution.write.setAdfPool([adfPool.address], { account: deployer.account }),
+    "DisputeResolution.setAdfPool"
+  );
   // 5. DisputeResolution.setServerOracle(deployer)
-  await disputeResolution.write.setServerOracle([deployer.account.address], { account: deployer.account });
+  await sendTx(
+    disputeResolution.write.setServerOracle([deployer.account.address], { account: deployer.account }),
+    "DisputeResolution.setServerOracle"
+  );
   // 6. DisputeResolution.setDurations(evidence, commit, reveal) -> 180 giây (3 phút) mỗi pha phục vụ demo thoải mái
-  await disputeResolution.write.setDurations([180n, 180n, 180n], { account: deployer.account });
+  await sendTx(
+    disputeResolution.write.setDurations([180n, 180n, 180n], { account: deployer.account }),
+    "DisputeResolution.setDurations"
+  );
   console.log("   ✅ Cross-linkings completed successfully!\n");
 
   // ---- Bước 6: Seed 3 Trọng Tài (Jurors) — Accounts #16-#18 (index 15-17) ----
